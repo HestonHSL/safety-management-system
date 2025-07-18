@@ -1,0 +1,613 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Table,
+  Button,
+  Space,
+  Modal,
+  Form,
+  Input,
+  Select,
+  message,
+  Popconfirm,
+  Card,
+  Row,
+  Col,
+  Upload,
+  Image,
+  Divider
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  EyeOutlined
+} from '@ant-design/icons';
+import { Point, PointForm, PointQuery } from '../types';
+import { pointApi, getSelectOptions } from '../services/api';
+import { generateQRCode, generateLabelImage, downloadQRCode, downloadLabelImage } from '../utils/qrcode';
+import { exportToExcel, readExcelFile } from '../utils/export';
+
+const PointManagement: React.FC = () => {
+  const [points, setPoints] = useState<Point[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [editingPoint, setEditingPoint] = useState<Point | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<Point | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<PointQuery>({});
+  const [options, setOptions] = useState<{
+    regions: { label: string; value: string }[];
+    safetyOfficers: { label: string; value: string }[];
+  }>({ regions: [], safetyOfficers: [] });
+  
+  const [form] = Form.useForm();
+  const [searchForm] = Form.useForm();
+
+  // 获取点位列表
+  const fetchPoints = async () => {
+    setLoading(true);
+    try {
+      const response = await pointApi.getPoints(searchQuery);
+      setPoints(response.data);
+    } catch (error) {
+      message.error('获取点位列表失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 获取选项数据
+  const fetchOptions = async () => {
+    try {
+      const optionsData = await getSelectOptions();
+      setOptions(optionsData);
+    } catch (error) {
+      message.error('获取选项数据失败');
+    }
+  };
+
+  useEffect(() => {
+    fetchPoints();
+    fetchOptions();
+  }, [searchQuery]);
+
+  // 搜索功能
+  const handleSearch = (values: PointQuery) => {
+    setSearchQuery(values);
+  };
+
+  // 重置搜索
+  const handleReset = () => {
+    searchForm.resetFields();
+    setSearchQuery({});
+  };
+
+  // 新增点位
+  const handleAdd = () => {
+    setEditingPoint(null);
+    setModalVisible(true);
+    form.resetFields();
+  };
+
+  // 编辑点位
+  const handleEdit = (record: Point) => {
+    setEditingPoint(record);
+    setModalVisible(true);
+    form.setFieldsValue(record);
+  };
+
+  // 删除点位
+  const handleDelete = async (id: string) => {
+    try {
+      await pointApi.deletePoint(id);
+      message.success('删除成功');
+      fetchPoints();
+    } catch (error) {
+      message.error('删除失败');
+    }
+  };
+
+  // 提交表单
+  const handleSubmit = async (values: PointForm) => {
+    try {
+      if (editingPoint) {
+        await pointApi.updatePoint(editingPoint.id, values);
+        message.success('更新成功');
+      } else {
+        await pointApi.createPoint(values);
+        message.success('新增成功');
+      }
+      setModalVisible(false);
+      fetchPoints();
+    } catch (error) {
+      message.error(editingPoint ? '更新失败' : '新增失败');
+    }
+  };
+
+  // 预览二维码
+  const handlePreviewQR = async (record: Point) => {
+    try {
+      setSelectedPoint(record);
+      
+      // 生成H5页面链接（这里使用模拟链接）
+      const h5Url = `${window.location.origin}/h5/point/${record.id}`;
+      const labelImage = await generateLabelImage(h5Url);
+      setQrCodeUrl(labelImage);
+      setQrModalVisible(true);
+    } catch (error) {
+      message.error('生成标签图片失败');
+    }
+  };
+
+  // 下载标签图片
+  const handleDownloadQR = () => {
+    if (qrCodeUrl && selectedPoint) {
+      const pointName = selectedPoint.pointName || selectedPoint.name || '点位';
+      const filename = `${pointName}_安全员信息码`;
+      downloadLabelImage(qrCodeUrl, filename);
+      message.success('标签图片下载成功');
+    }
+  };
+
+  // 批量下载标签图片
+  const handleBatchDownloadQR = async () => {
+    if (points.length === 0) {
+      message.warning('暂无点位数据');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      for (const point of points) {
+        const h5Url = `${window.location.origin}/h5/point/${point.id}`;
+        const labelImage = await generateLabelImage(h5Url);
+        const name = point.pointName || point.name || '点位';
+        downloadLabelImage(labelImage, `${name}_安全员信息码`);
+        // 添加小延迟避免浏览器阻止多个下载
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      message.success(`成功下载 ${points.length} 个标签图片`);
+    } catch (error) {
+      message.error('批量下载标签图片失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 导出数据
+  const handleExport = () => {
+    const exportData = points.map(point => {
+      const officer = options.safetyOfficers.find(o => o.value === (point.guardId || point.safetyOfficerId));
+      return {
+        点位编码: point.pointId || point.code || point.id,
+        点位名称: point.pointName || point.name || '',
+        学院: point.college || '',
+        楼栋: point.building || '',
+        楼层: point.floor || '',
+        所属区域: point.regionName || '',
+        房间号: point.roomNumber || '',
+        详细名称: point.location || '',
+        用途: point.purpose || '',
+        负责安全员: officer ? officer.label : (point.safetyOfficerName || ''),
+        描述: point.description || '',
+        创建时间: point.createTime || ''
+      };
+    });
+    
+    exportToExcel(exportData, '点位信息', [
+      '点位编码', '点位名称', '学院', '楼栋', '楼层', '所属区域', '房间号', '详细名称', '用途', '负责安全员', '描述', '创建时间'
+    ]);
+    message.success('导出成功');
+  };
+
+  // 批量导入
+  const handleImport = async (file: File) => {
+    try {
+      const data = await readExcelFile(file);
+      
+      console.log('导入的数据:', data);
+      message.success(`成功导入 ${data.length} 条记录`);
+      fetchPoints();
+    } catch (error) {
+      message.error('导入失败，请检查文件格式');
+    }
+    return false;
+  };
+
+  const columns = [
+    {
+      title: '序号',
+      dataIndex: 'index',
+      key: 'index',
+      width: 80,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
+    {
+      title: '点位编码',
+      dataIndex: 'pointId',
+      key: 'pointId',
+      width: 120,
+      render: (text: string, record: Point) => {
+        return record.pointId || record.code || record.id;
+      },
+    },
+    {
+      title: '所属学院/部门',
+      dataIndex: 'regionName',
+      key: 'regionName',
+      width: 150,
+    },
+    {
+      title: '楼层',
+      dataIndex: 'floor',
+      key: 'floor',
+      width: 80,
+    },
+    {
+      title: '房间号',
+      dataIndex: 'roomNumber',
+      key: 'roomNumber',
+      width: 100,
+    },
+    {
+      title: '详细名称',
+      dataIndex: 'location',
+      key: 'location',
+      width: 200,
+    },
+    {
+      title: '用途',
+      dataIndex: 'purpose',
+      key: 'purpose',
+      width: 120,
+    },
+    {
+      title: '负责安全员',
+      dataIndex: 'safetyOfficerName',
+      key: 'safetyOfficerName',
+      width: 150,
+      render: (text: string, record: Point) => {
+        const officer = options.safetyOfficers.find(o => o.value === record.safetyOfficerId);
+        if (officer) {
+          // 从安全员选项中获取完整信息，选项格式应该是 "姓名-部门"
+          return officer.label;
+        }
+        return text || '-';
+      },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 280,
+      fixed: 'right' as const,
+      render: (_: any, record: Point) => (
+        <Space size={4}>
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          >
+            编辑
+          </Button>
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
+            onClick={() => handlePreviewQR(record)}
+          >
+            预览标签
+          </Button>
+          <Popconfirm
+            title="确定要删除这个点位吗？"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button type="link" danger icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <Card title="点位管理" style={{ marginBottom: 20 }}>
+        {/* 搜索表单 */}
+        <Form
+          form={searchForm}
+          layout="inline"
+          onFinish={handleSearch}
+          style={{ marginBottom: 20 }}
+        >
+          <Form.Item name="name" label="点位名称">
+            <Input placeholder="请输入点位名称" allowClear />
+          </Form.Item>
+          <Form.Item name="code" label="点位编码">
+            <Input placeholder="请输入点位编码" allowClear />
+          </Form.Item>
+          <Form.Item name="regionId" label="所属学院/部门">
+            <Select
+              placeholder="请选择学院/部门"
+              allowClear
+              style={{ width: 180 }}
+              options={options.regions}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Space size="small">
+              <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                搜索
+              </Button>
+              <Button onClick={handleReset}>重置</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+
+        {/* 操作按钮 */}
+        <Row justify="space-between" style={{ marginBottom: 20 }}>
+          <Col>
+            <Space size="small">
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                新增点位
+              </Button>
+              <Upload
+                beforeUpload={handleImport}
+                showUploadList={false}
+                accept=".xlsx,.xls"
+              >
+                <Button icon={<UploadOutlined />}>批量导入</Button>
+              </Upload>
+            </Space>
+          </Col>
+          <Col>
+            <Space size="small">
+              <Button icon={<DownloadOutlined />} onClick={handleBatchDownloadQR}>
+                批量下载标签
+              </Button>
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>
+                导出数据
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+
+        {/* 表格 */}
+        <Table
+          columns={columns}
+          dataSource={points}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `共 ${total} 条记录`,
+          }}
+          scroll={{ x: 1400 }}
+        />
+      </Card>
+
+      {/* 新增/编辑弹窗 */}
+      <Modal
+        title={editingPoint ? '编辑点位' : '新增点位'}
+        open={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        footer={null}
+        destroyOnClose
+        width={700}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="点位名称"
+                rules={[{ required: true, message: '请输入点位名称' }]}
+              >
+                <Input placeholder="请输入点位名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="code"
+                label="点位编码"
+                rules={editingPoint ? [] : []}
+              >
+                <Input 
+                  placeholder={editingPoint ? "点位编码（后端自动生成）" : "点位编码（后端自动生成）"} 
+                  disabled={!editingPoint}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="regionId"
+                label="所属学院/部门"
+                rules={[{ required: true, message: '请选择所属学院/部门' }]}
+              >
+                <Select
+                  placeholder="请选择学院/部门"
+                  options={options.regions}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="safetyOfficerId"
+                label="负责安全员"
+                rules={[{ required: true, message: '请选择负责安全员' }]}
+              >
+                <Select
+                  placeholder="请选择安全员"
+                  options={options.safetyOfficers}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="floor"
+                label="楼层"
+                rules={[{ required: true, message: '请输入楼层' }]}
+              >
+                <Input placeholder="请输入楼层（如：3楼）" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="roomNumber"
+                label="房间号"
+                rules={[{ required: true, message: '请输入房间号' }]}
+              >
+                <Input placeholder="请输入房间号" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="location"
+                label="详细名称"
+                rules={[{ required: true, message: '请输入详细名称' }]}
+              >
+                <Input placeholder="请输入详细位置名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="purpose"
+                label="用途"
+              >
+                <Input placeholder="请输入点位用途（可选）" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="description" label="描述">
+            <Input.TextArea
+              placeholder="请输入描述（可选）"
+              rows={3}
+            />
+          </Form.Item>
+          <Divider />
+          <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
+            <Space size="small">
+              <Button onClick={() => setModalVisible(false)}>取消</Button>
+              <Button type="primary" htmlType="submit">
+                {editingPoint ? '更新' : '新增'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 标签预览弹窗 */}
+      <Modal
+        title="安全员信息码标签预览"
+        open={qrModalVisible}
+        onCancel={() => setQrModalVisible(false)}
+        footer={[
+          <Button key="download" type="primary" onClick={handleDownloadQR}>
+            下载标签
+          </Button>,
+          <Button key="close" onClick={() => setQrModalVisible(false)}>
+            关闭
+          </Button>
+        ]}
+        width={500}
+      >
+        {selectedPoint && (
+          <div className="qr-code-preview" style={{ textAlign: 'center' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ margin: '0 0 8px 0', color: '#1890ff' }}>
+                {selectedPoint.pointName || selectedPoint.name}
+              </h4>
+              <p style={{ margin: '0', color: '#666', fontSize: '14px' }}>
+                {selectedPoint.college || selectedPoint.regionName} - {selectedPoint.building} - {selectedPoint.floor}楼
+              </p>
+            </div>
+            
+            {qrCodeUrl && (
+              <div style={{ margin: '20px 0' }}>
+                <Image
+                  src={qrCodeUrl}
+                  alt="安全员信息码标签"
+                  style={{ 
+                    maxWidth: '300px',
+                    border: '1px solid #e8e8e8',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* <Divider />
+            
+            <div style={{ 
+              background: '#f0f8ff', 
+              padding: '16px', 
+              borderRadius: '8px', 
+              margin: '16px 0',
+              border: '1px solid #d6e4ff'
+            }}>
+              <h5 style={{ 
+                margin: '0 0 12px 0', 
+                color: '#1890ff',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}>
+                📄 3寸标签打印说明
+              </h5>
+              <div style={{ textAlign: 'left', fontSize: '14px', color: '#333' }}>
+                <p style={{ margin: '4px 0' }}>• 标签尺寸：3寸 (76mm × 102mm)</p>
+                <p style={{ margin: '4px 0' }}>• 图片分辨率：300 × 400 像素</p>
+                <p style={{ margin: '4px 0' }}>• 适用于热敏打印机和喷墨打印机</p>
+                <p style={{ margin: '4px 0' }}>• 建议使用不干胶标签纸打印</p>
+              </div>
+            </div> */}
+            
+                         <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '6px', marginTop: '16px' }}>
+               <h5 style={{ margin: '0 0 8px 0', color: '#1890ff' }}>🔗 H5页面预览</h5>
+               <p style={{ 
+                 fontSize: '14px', 
+                 color: '#333',
+                 wordBreak: 'break-all',
+                 background: '#fff',
+                 padding: '8px 12px',
+                 border: '1px solid #d9d9d9',
+                 borderRadius: '4px',
+                 margin: '8px 0'
+               }}>
+                 <a 
+                   href={`${window.location.origin}/h5/point/${selectedPoint.id}`} 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   style={{ color: '#1890ff', textDecoration: 'none' }}
+                 >
+                   {`${window.location.origin}/h5/point/${selectedPoint.id}`}
+                 </a>
+               </p>
+               <p style={{ fontSize: '12px', color: '#666', margin: '8px 0 0 0' }}>
+                 💡 点击上方链接可预览扫码后的H5页面效果，或扫描标签上的二维码查看点位详细信息
+               </p>
+             </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+export default PointManagement; 

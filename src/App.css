@@ -1,0 +1,99 @@
+.App {
+  text-align: center;
+}
+
+/* .logo {
+  height: 64px;
+  margin: 16px;
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  color: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
+} */
+
+.ant-layout-sider {
+  overflow: auto;
+  height: 100vh;
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
+}
+
+.ant-layout {
+  margin-left: 200px;
+}
+
+.ant-layout-content {
+  position: relative;
+}
+
+.ant-menu-item-selected {
+  background-color: #e6f7ff !important;
+  border-right: 3px solid #1890ff !important;
+}
+
+.ant-menu-item-selected .ant-menu-item-icon,
+.ant-menu-item-selected span {
+  color: #1890ff !important;
+  font-weight: 600;
+}
+
+.ant-menu-item:hover {
+  background-color: #f0f8ff !important;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.search-form {
+  background: #f5f5f5;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+}
+
+.operation-buttons {
+  margin-bottom: 16px;
+}
+
+.qr-code-preview {
+  text-align: center;
+  padding: 20px;
+}
+
+.qr-code-preview img {
+  max-width: 300px;
+  margin: 20px 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.qr-code-preview img:hover {
+  transform: scale(1.02);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    width: 180px !important;
+  }
+  
+  .ant-layout {
+    margin-left: 180px;
+  }
+  
+  .logo {
+    font-size: 12px;
+    margin: 12px;
+  }
+} 
