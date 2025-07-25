@@ -25,7 +25,6 @@ export const generateLabelImage = async (data: string): Promise<string> => {
     const canvasWidth = 300;
     const canvasHeight = 400;
     const qrSize = 200; // 二维码大小
-    const textHeight = 60; // 文字区域高度
     
     // 创建Canvas
     const canvas = document.createElement('canvas');

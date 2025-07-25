@@ -1,43 +1,46 @@
-// HTTP客户端配置
-export interface ApiResponse<T = any> {
-  code: number;
-  message: string;
-  data: T;
-  total?: number;
-  pageNum?: number;
-  pageSize?: number;
-  success?: boolean;
-}
+import { ApiResponse } from '../types/common';
 
 class HttpClient {
   private baseURL: string;
-  
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
+
+  constructor() {
+    // 开发环境使用 /api 前缀，生产环境使用真实后端地址
+    this.baseURL = import.meta.env.DEV ? '/api' : 'http://113.45.24.31:8080';
   }
 
   private async request<T>(
-    url: string, 
+    url: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const token = localStorage.getItem('token');
-    
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
+      // 移除 redirect: 'manual'，让代理正常工作
       ...options,
     };
 
-    console.log(`[HTTP] ${options.method || 'GET'} ${this.baseURL}${url}`, {
+
+    const fullUrl = `${this.baseURL}${url}`;
+    console.log(`[HTTP] ${options.method || 'GET'} ${fullUrl}`, {
       config,
-      body: options.body
+      body: options.body,
+      env: import.meta.env.MODE
     });
 
     try {
-      const response = await fetch(`${this.baseURL}${url}`, config);
+      const response = await fetch(fullUrl, config);
+
+      console.log(`[HTTP] Response Status: ${response.status}`, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        url: response.url
+      });
 
       if (!response.ok) {
         // 处理HTTP错误状态
@@ -48,20 +51,16 @@ class HttpClient {
           window.location.href = '/login';
           throw new Error('登录已过期，请重新登录');
         }
-        
+
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `请求失败: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
-      
+
       console.log(`[HTTP] Response:`, result);
 
-      // 检查业务状态码
-      if (result.code && result.code !== 200 && result.code !== 0) {
-        throw new Error(result.message || '请求失败');
-      }
-
+      // 直接返回结果，不检查业务状态码
       return result;
     } catch (error) {
       console.error(`[HTTP] Error:`, error);
@@ -102,7 +101,7 @@ class HttpClient {
   upload<T>(url: string, file: File, data?: Record<string, any>): Promise<ApiResponse<T>> {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     if (data) {
       Object.keys(data).forEach(key => {
         formData.append(key, data[key]);
@@ -110,7 +109,7 @@ class HttpClient {
     }
 
     const token = localStorage.getItem('token');
-    
+
     return this.request<T>(url, {
       method: 'POST',
       body: formData,
@@ -124,7 +123,7 @@ class HttpClient {
   // 文件下载（POST方式，用于导出功能）
   async download(url: string, data?: any): Promise<Blob> {
     const token = localStorage.getItem('token');
-    
+
     const response = await fetch(`${this.baseURL}${url}`, {
       method: 'POST',
       headers: {
@@ -148,7 +147,7 @@ class HttpClient {
       fileName,
       delete: deleteAfterDownload.toString()
     });
-    
+
     const response = await fetch(`${this.baseURL}/common/download?${params}`, {
       method: 'GET',
       headers: {
@@ -164,6 +163,4 @@ class HttpClient {
   }
 }
 
-export const httpClient = new HttpClient(
-  process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api'
-); 
+export const httpClient = new HttpClient(); 

@@ -3,7 +3,7 @@ import { Form, Input, Button, Card, message, Typography, Space, Checkbox } from 
 import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { LoginForm } from '../types';
-import { authApi } from '../services/api';
+import { authApi } from '../services';
 import './Login.css';
 
 const { Title, Text } = Typography;
@@ -49,6 +49,7 @@ const Login: React.FC = () => {
             onFinish={handleLogin}
             autoComplete="off"
             style={{ marginTop: '32px' }}
+            initialValues={{ rememberMe: false }}
           >
             <Form.Item
               name="username"

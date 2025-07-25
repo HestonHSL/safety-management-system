@@ -289,7 +289,7 @@ const ApiDebugger: React.FC = () => {
               <p>1. 确保后端服务已启动并运行在配置的地址上</p>
               <p>2. 检查网络连接和跨域配置</p>
               <p>3. 查看浏览器控制台获取详细错误信息</p>
-              <p>4. 如需切换到真实API，请设置环境变量 REACT_APP_USE_REAL_API=true</p>
+              <p>4. 如需切换到真实API，请设置环境变量 VITE_USE_REAL_API=true</p>
             </div>
           }
           type="info"

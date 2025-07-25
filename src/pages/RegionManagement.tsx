@@ -18,16 +18,16 @@ import {
   Typography,
   MenuProps
 } from 'antd';
-import { 
-  PlusOutlined, 
-  EditOutlined, 
-  DeleteOutlined, 
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
   SearchOutlined,
   MoreOutlined,
   FolderOutlined
 } from '@ant-design/icons';
-import { Region, RegionForm, RegionQuery } from '../types';
-import { regionApi } from '../services';
+import { Department, DepartmentForm, DepartmentQuery } from '../types';
+import { departmentApi } from '../services';
 
 const { Text } = Typography;
 
@@ -37,20 +37,20 @@ interface TreeNode {
   children?: TreeNode[];
   icon?: React.ReactNode;
   isLeaf?: boolean;
-  data: Region;
+  data: Department;
 }
 
 const RegionManagement: React.FC = () => {
-  const [regions, setRegions] = useState<Region[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
-  const [allRegions, setAllRegions] = useState<Region[]>([]);
+  const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
   const [treeLoading, setTreeLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingRegion, setEditingRegion] = useState<Region | null>(null);
-  const [searchQuery, setSearchQuery] = useState<RegionQuery>({});
+  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
+  const [searchQuery, setSearchQuery] = useState<DepartmentQuery>({});
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
-  const [parentRegions, setParentRegions] = useState<any[]>([]);
+  const [parentDepartments, setParentDepartments] = useState<any[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [searchValue, setSearchValue] = useState('');
@@ -58,24 +58,25 @@ const RegionManagement: React.FC = () => {
   const [searchForm] = Form.useForm();
 
   // 构建树形数据结构
-  const buildTreeData = (regions: Region[], searchValue?: string): TreeNode[] => {
-    const map = new Map<string, Region>();
+  const buildTreeData = (departments: Department[], searchValue?: string): TreeNode[] => {
+    const map = new Map<string, Department>();
     const roots: TreeNode[] = [];
 
     // 创建映射
-    regions.forEach(region => {
-      map.set(region.id, region);
+    departments.forEach(dept => {
+      if (dept.deptId) {
+        map.set(dept.deptId.toString(), dept);
+      }
     });
 
-    regions.forEach(region => {
-      const isHighlighted = searchValue && 
-        (region.name?.toLowerCase().includes(searchValue.toLowerCase()) ||
-         region.areaName?.toLowerCase().includes(searchValue.toLowerCase()));
+    departments.forEach(dept => {
+      const isHighlighted = searchValue &&
+        dept.deptName?.toLowerCase().includes(searchValue.toLowerCase());
 
       const nodeTitle = (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           minHeight: '32px',
           padding: '4px 8px',
@@ -84,26 +85,26 @@ const RegionManagement: React.FC = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
             <Text strong style={{ marginRight: '8px' }}>
-              {region.areaName || region.name}
+              {dept.deptName || '未命名部门'}
             </Text>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              (排序: {region.orderNum || 0}, 点位: {region.pointCount || 0})
+              (排序: {dept.orderNum || 0}, 点位: {dept.pointCount || 0})
             </Text>
           </div>
           <div onClick={(e) => e.stopPropagation()}>
             <Dropdown
               menu={{
-                items: getMenuItems(region),
+                items: getMenuItems(dept),
                 onClick: ({ key, domEvent }) => {
                   domEvent.stopPropagation();
-                  handleMenuClick(key, region);
+                  handleMenuClick(key, dept);
                 }
               }}
               trigger={['click']}
             >
-              <Button 
-                type="text" 
-                size="small" 
+              <Button
+                type="text"
+                size="small"
                 icon={<MoreOutlined />}
                 onClick={(e) => e.stopPropagation()}
               />
@@ -113,25 +114,25 @@ const RegionManagement: React.FC = () => {
       );
 
       const treeNode: TreeNode = {
-        key: region.id,
+        key: dept.deptId?.toString() || '',
         title: nodeTitle,
-        data: region,
+        data: dept,
         children: [],
         icon: <FolderOutlined />
       };
 
-      if (!region.parentId || !map.has(region.parentId)) {
+      if (!dept.parentId || dept.parentId === 0 || !map.has(dept.parentId.toString())) {
         // 根节点
         roots.push(treeNode);
       } else {
         // 子节点
-        const parent = map.get(region.parentId);
-        if (parent) {
-          let parentNode = findNodeInTree(roots, parent.id);
+        const parent = map.get(dept.parentId.toString());
+        if (parent && parent.deptId) {
+          let parentNode = findNodeInTree(roots, parent.deptId.toString());
           if (!parentNode) {
             // 如果父节点还没有被创建，先创建父节点
             const parentTreeNode: TreeNode = {
-              key: parent.id,
+              key: parent.deptId.toString(),
               title: createNodeTitle(parent),
               data: parent,
               children: [treeNode],
@@ -174,37 +175,37 @@ const RegionManagement: React.FC = () => {
   };
 
   // 创建节点标题
-  const createNodeTitle = (region: Region) => {
+  const createNodeTitle = (dept: Department) => {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
         minHeight: '32px',
         padding: '4px 8px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
           <Text strong style={{ marginRight: '8px' }}>
-            {region.areaName || region.name}
+            {dept.deptName || '未命名部门'}
           </Text>
           <Text type="secondary" style={{ fontSize: '12px' }}>
-            (排序: {region.orderNum || 0}, 点位: {region.pointCount || 0})
+            (排序: {dept.orderNum || 0}, 点位: {dept.pointCount || 0})
           </Text>
         </div>
         <div onClick={(e) => e.stopPropagation()}>
           <Dropdown
             menu={{
-              items: getMenuItems(region),
+              items: getMenuItems(dept),
               onClick: ({ key, domEvent }) => {
                 domEvent.stopPropagation();
-                handleMenuClick(key, region);
+                handleMenuClick(key, dept);
               }
             }}
             trigger={['click']}
           >
-            <Button 
-              type="text" 
-              size="small" 
+            <Button
+              type="text"
+              size="small"
               icon={<MoreOutlined />}
               onClick={(e) => e.stopPropagation()}
             />
@@ -215,10 +216,10 @@ const RegionManagement: React.FC = () => {
   };
 
   // 获取菜单项
-  const getMenuItems = (region: Region): MenuProps['items'] => [
+  const getMenuItems = (dept: Department): MenuProps['items'] => [
     {
       key: 'addChild',
-      label: '添加子区域',
+      label: '添加子部门',
       icon: <PlusOutlined />
     },
     {
@@ -238,61 +239,57 @@ const RegionManagement: React.FC = () => {
   ];
 
   // 处理菜单点击
-  const handleMenuClick = async (key: string, region: Region) => {
+  const handleMenuClick = async (key: string, dept: Department) => {
     switch (key) {
       case 'addChild':
-        handleAddChild(region);
+        handleAddChild(dept);
         break;
       case 'edit':
-        handleEdit(region);
+        handleEdit(dept);
         break;
       case 'delete':
         Modal.confirm({
-          title: '确定要删除这个区域吗？',
-          content: '删除后将无法恢复，且会影响所有子区域。',
+          title: '确定要删除这个部门吗？',
+          content: '删除后将无法恢复，且会影响所有子部门。',
           okText: '确定',
           cancelText: '取消',
-          onOk: () => handleDelete(region.id)
+          onOk: () => handleDelete(dept.deptId || 0)
         });
         break;
     }
   };
 
-  // 获取区域列表（用于表格分页显示）
-  const fetchRegions = async (pageNum = pagination.current, pageSize = pagination.pageSize) => {
+  // 获取部门列表（用于表格分页显示）
+  const fetchDepartments = async (pageNum = pagination.current, pageSize = pagination.pageSize) => {
     setLoading(true);
     try {
-      const response = await regionApi.getRegions({
-        ...searchQuery,
-        pageNum,
-        pageSize
-      });
-      setRegions(response.data);
+      // 注意：由于API文档中没有分页的部门列表接口，这里使用树形接口
+      const response = await departmentApi.getDepartmentTree(searchQuery);
+      setDepartments(response.data);
       setPagination(prev => ({
         ...prev,
-        current: response.pageNum,
-        pageSize: response.pageSize,
-        total: response.total
+        current: pageNum,
+        pageSize: pageSize,
+        total: response.data.length
       }));
     } catch (error) {
-      message.error('获取区域列表失败');
+      message.error('获取部门列表失败');
     } finally {
       setLoading(false);
     }
   };
 
-  // 获取所有区域数据（用于构建树形结构）
-  const fetchAllRegions = async () => {
+  // 获取所有部门数据（用于构建树形结构）
+  const fetchAllDepartments = async () => {
     setTreeLoading(true);
     try {
-      const response = await regionApi.getRegions({
-        pageNum: 1,
-        pageSize: 1000 // 获取所有数据
+      const response = await departmentApi.getDepartmentTree({
+        deptName: searchValue
       });
-      setAllRegions(response.data);
+      setAllDepartments(response.data);
       const tree = buildTreeData(response.data, searchValue);
       setTreeData(tree);
-      
+
       // 默认展开所有节点
       const allKeys = getAllNodeKeys(tree);
       setExpandedKeys(allKeys);
@@ -318,29 +315,34 @@ const RegionManagement: React.FC = () => {
     return keys;
   };
 
-  // 获取父级区域列表
-  const fetchParentRegions = async () => {
+  // 获取父级部门列表
+  const fetchParentDepartments = async () => {
     try {
-      const response = await regionApi.getRegionTreeSelect();
-      setParentRegions(response.data);
+      const response = await departmentApi.getDepartmentTree();
+      const treeSelectData = response.data.map(dept => ({
+        id: dept.deptId || 0,
+        label: dept.deptName || '未命名部门',
+        value: dept.deptId || 0
+      }));
+      setParentDepartments(treeSelectData);
     } catch (error) {
-      console.error('获取父级区域列表失败');
+      console.error('获取父级部门列表失败');
     }
   };
 
   useEffect(() => {
-    fetchRegions();
-    fetchParentRegions();
+    fetchDepartments();
+    fetchParentDepartments();
   }, [searchQuery]);
 
   useEffect(() => {
-    fetchAllRegions();
+    fetchAllDepartments();
   }, [searchValue]);
 
   // 搜索功能
-  const handleSearch = (values: RegionQuery) => {
+  const handleSearch = (values: DepartmentQuery) => {
     setSearchQuery(values);
-    setSearchValue(values.name || '');
+    setSearchValue(values.deptName || '');
     setPagination(prev => ({ ...prev, current: 1 })); // 重置到第一页
   };
 
@@ -358,72 +360,66 @@ const RegionManagement: React.FC = () => {
     setSelectedKeys(stringKeys);
     if (stringKeys.length > 0) {
       const selectedId = stringKeys[0];
-      const selectedRegion = allRegions.find(r => r.id === selectedId);
-      if (selectedRegion) {
+      const selectedDept = allDepartments.find(d => d.deptId?.toString() === selectedId);
+      if (selectedDept) {
         // 可以在这里添加选中树节点后的操作，比如高亮表格中对应的行
-        console.log('选中区域:', selectedRegion);
+        console.log('选中部门:', selectedDept);
       }
     }
   };
 
-  // 新增区域
+  // 新增部门
   const handleAdd = () => {
-    setEditingRegion(null);
+    setEditingDepartment(null);
     setModalVisible(true);
     form.resetFields();
   };
 
-  // 新增子区域
-  const handleAddChild = (parentRegion: Region) => {
-    setEditingRegion(null);
+  // 新增子部门
+  const handleAddChild = (parentDept: Department) => {
+    setEditingDepartment(null);
     setModalVisible(true);
     form.resetFields();
     form.setFieldsValue({
-      parentId: parentRegion.id
+      parentId: parentDept.deptId || 0
     });
   };
 
-  // 编辑区域
-  const handleEdit = (record: Region) => {
-    setEditingRegion(record);
+  // 编辑部门
+  const handleEdit = (record: Department) => {
+    setEditingDepartment(record);
     setModalVisible(true);
     form.setFieldsValue({
-      areaName: record.areaName || record.name,
-      parentId: record.parentId || '',
+      deptName: record.deptName,
+      deptCode: record.deptCode,
+      parentId: record.parentId || 0,
       orderNum: record.orderNum || 0,
-      description: record.description || '',
+      remark: record.remark || '',
     });
   };
 
-  // 删除区域
-  const handleDelete = async (id: string) => {
+  // 删除部门
+  const handleDelete = async (deptId: number) => {
     try {
-      await regionApi.deleteRegion(id);
+      await departmentApi.deleteDepartments([deptId]);
       message.success('删除成功');
-      fetchRegions(); // 刷新表格数据
-      fetchAllRegions(); // 刷新树形数据
-      fetchParentRegions(); // 刷新父级区域选项
+      fetchDepartments(); // 刷新表格数据
+      fetchAllDepartments(); // 刷新树形数据
+      fetchParentDepartments(); // 刷新父级部门选项
     } catch (error) {
       message.error('删除失败');
     }
   };
 
   // 提交表单
-  const handleSubmit = async (values: RegionForm) => {
+  const handleSubmit = async (values: DepartmentForm) => {
     try {
-      if (editingRegion) {
-        await regionApi.updateRegion(editingRegion.id, values);
-        message.success('更新成功');
-      } else {
-        await regionApi.createRegion(values);
-        message.success('新增成功');
-      }
+      // 注意：API文档中没有创建和更新部门的接口，这里保留原有逻辑
+      // 实际使用时需要根据后端提供的接口进行调整
+      message.warning('部门创建和更新功能需要后端提供相应接口');
       setModalVisible(false);
-      fetchRegions(); // 刷新表格数据
-      fetchAllRegions(); // 刷新树形数据
-      fetchParentRegions(); // 刷新父级区域选项
     } catch (error) {
-      message.error(editingRegion ? '更新失败' : '新增失败');
+      message.error(editingDepartment ? '更新失败' : '新增失败');
     }
   };
 
@@ -437,18 +433,22 @@ const RegionManagement: React.FC = () => {
       render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
     },
     {
-      title: '区域名称',
-      dataIndex: 'areaName',
-      key: 'areaName',
-      render: (text: string, record: Region) => text || record.name,
+      title: '部门名称',
+      dataIndex: 'deptName',
+      key: 'deptName',
     },
     {
-      title: '父级区域',
+      title: '部门编码',
+      dataIndex: 'deptCode',
+      key: 'deptCode',
+    },
+    {
+      title: '父级部门',
       dataIndex: 'parentId',
       key: 'parentId',
-      render: (parentId: string) => {
-        if (!parentId) return '-';
-        const parent = parentRegions.find(p => p.id === parentId);
+      render: (parentId: number) => {
+        if (!parentId || parentId === 0) return '-';
+        const parent = parentDepartments.find(p => p.id === parentId);
         return parent ? parent.label : parentId;
       },
     },
@@ -459,9 +459,9 @@ const RegionManagement: React.FC = () => {
       render: (num: number) => num || 0,
     },
     {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
+      title: '备注',
+      dataIndex: 'remark',
+      key: 'remark',
       render: (text: string) => text || '-',
     },
     {
@@ -474,12 +474,19 @@ const RegionManagement: React.FC = () => {
       title: '创建时间',
       dataIndex: 'createTime',
       key: 'createTime',
+      render: (time: Date | string) => {
+        if (!time) return '-';
+        if (time instanceof Date) {
+          return time.toLocaleString();
+        }
+        return time;
+      },
     },
     {
       title: '操作',
       key: 'action',
       width: 200,
-      render: (_: any, record: Region) => (
+      render: (_: any, record: Department) => (
         <Space size={4}>
           <Button
             type="link"
@@ -489,8 +496,8 @@ const RegionManagement: React.FC = () => {
             编辑
           </Button>
           <Popconfirm
-            title="确定要删除这个区域吗？"
-            onConfirm={() => handleDelete(record.id)}
+            title="确定要删除这个部门吗？"
+            onConfirm={() => handleDelete(record.deptId || 0)}
             okText="确定"
             cancelText="取消"
           >
@@ -505,7 +512,7 @@ const RegionManagement: React.FC = () => {
 
   return (
     <div>
-      <Card title="区域管理" style={{ marginBottom: 20 }}>
+      <Card title="部门管理" style={{ marginBottom: 20 }}>
         {/* 搜索表单 */}
         <Form
           form={searchForm}
@@ -513,8 +520,11 @@ const RegionManagement: React.FC = () => {
           onFinish={handleSearch}
           style={{ marginBottom: 20 }}
         >
-          <Form.Item name="name" label="区域名称">
-            <Input placeholder="请输入区域名称" allowClear />
+          <Form.Item name="deptName" label="部门名称">
+            <Input placeholder="请输入部门名称" allowClear />
+          </Form.Item>
+          <Form.Item name="deptCode" label="部门编码">
+            <Input placeholder="请输入部门编码" allowClear />
           </Form.Item>
           <Form.Item>
             <Space size="small">
@@ -530,7 +540,7 @@ const RegionManagement: React.FC = () => {
         <Row justify="space-between" style={{ marginBottom: 20 }}>
           <Col>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              新增区域
+              新增部门
             </Button>
           </Col>
         </Row>
@@ -539,17 +549,17 @@ const RegionManagement: React.FC = () => {
         <Row gutter={16}>
           {/* 左侧树形结构 */}
           <Col span={6}>
-            <Card title="区域树" size="small" style={{ height: '500px' }}>
-              <div style={{ 
+            <Card title="部门树" size="small" style={{ height: '500px' }}>
+              <div style={{
                 height: '420px',
                 overflow: 'auto'
               }}>
                 {treeLoading ? (
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    height: '200px' 
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '200px'
                   }}>
                     加载中...
                   </div>
@@ -572,30 +582,30 @@ const RegionManagement: React.FC = () => {
 
           {/* 右侧表格 */}
           <Col span={18}>
-            <Card title="区域列表" size="small" style={{ height: '500px' }}>
-        <Table
-          columns={columns}
-          dataSource={regions}
-          rowKey="id"
-          loading={loading}
+            <Card title="部门列表" size="small" style={{ height: '500px' }}>
+              <Table
+                columns={columns}
+                dataSource={departments}
+                rowKey="deptId"
+                loading={loading}
                 size="small"
                 scroll={{ y: 350 }}
-          pagination={{
+                pagination={{
                   current: pagination.current,
                   pageSize: pagination.pageSize,
                   total: pagination.total,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 条记录`,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total) => `共 ${total} 条记录`,
                   onChange: (page, pageSize) => {
                     setPagination(prev => ({ ...prev, current: page, pageSize: pageSize || 10 }));
-                    fetchRegions(page, pageSize);
+                    fetchDepartments(page, pageSize);
                   },
-          }}
-                rowClassName={(record) => 
-                  selectedKeys.includes(record.id) ? 'ant-table-row-selected' : ''
+                }}
+                rowClassName={(record) =>
+                  selectedKeys.includes(record.deptId?.toString() || '') ? 'ant-table-row-selected' : ''
                 }
-        />
+              />
             </Card>
           </Col>
         </Row>
@@ -603,7 +613,7 @@ const RegionManagement: React.FC = () => {
 
       {/* 新增/编辑弹窗 */}
       <Modal
-        title={editingRegion ? '编辑区域' : '新增区域'}
+        title={editingDepartment ? '编辑部门' : '新增部门'}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
@@ -614,43 +624,49 @@ const RegionManagement: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          initialValues={{ areaName: '', parentId: '', orderNum: 0, description: '' }}
+          initialValues={{ deptName: '', deptCode: '', parentId: 0, orderNum: 0, remark: '', status: '0' }}
         >
           <Form.Item
-            name="areaName"
-            label="区域名称"
-            rules={[{ required: true, message: '请输入区域名称' }]}
+            name="deptName"
+            label="部门名称"
+            rules={[{ required: true, message: '请输入部门名称' }]}
           >
-            <Input placeholder="请输入区域名称" />
+            <Input placeholder="请输入部门名称" />
           </Form.Item>
-          
+
+          <Form.Item
+            name="deptCode"
+            label="部门编码"
+          >
+            <Input placeholder="请输入部门编码" />
+          </Form.Item>
+
           <Form.Item
             name="parentId"
-            label="父级区域"
+            label="父级部门"
           >
             <TreeSelect
-              placeholder="请选择父级区域（可选）"
+              placeholder="请选择父级部门（可选）"
               allowClear
-              treeData={parentRegions}
-              fieldNames={{ label: 'label', value: 'id' }}
+              treeData={parentDepartments}
+              fieldNames={{ label: 'label', value: 'value' }}
             />
           </Form.Item>
-          
+
           <Form.Item
             name="orderNum"
             label="排序号"
-            rules={[{ required: true, message: '请输入排序号' }]}
           >
-            <InputNumber 
-              placeholder="请输入排序号" 
+            <InputNumber
+              placeholder="请输入排序号"
               min={0}
               style={{ width: '100%' }}
             />
           </Form.Item>
-          
-          <Form.Item name="description" label="描述">
+
+          <Form.Item name="remark" label="备注">
             <Input.TextArea
-              placeholder="请输入区域描述（可选）"
+              placeholder="请输入部门备注（可选）"
               rows={4}
             />
           </Form.Item>
@@ -658,7 +674,7 @@ const RegionManagement: React.FC = () => {
             <Space size="small">
               <Button onClick={() => setModalVisible(false)}>取消</Button>
               <Button type="primary" htmlType="submit">
-                {editingRegion ? '更新' : '新增'}
+                {editingDepartment ? '更新' : '新增'}
               </Button>
             </Space>
           </Form.Item>

@@ -25,24 +25,22 @@ import {
   UploadOutlined,
   EyeOutlined
 } from '@ant-design/icons';
-import { Point, PointForm, PointQuery } from '../types';
-import { pointApi, getSelectOptions } from '../services/api';
+import { PatrolPoint, PatrolPointForm, PatrolPointQuery } from '../types';
+import { patrolPointApi, departmentApi } from '../services';
 import { generateQRCode, generateLabelImage, downloadQRCode, downloadLabelImage } from '../utils/qrcode';
 import { exportToExcel, readExcelFile } from '../utils/export';
 
 const PointManagement: React.FC = () => {
-  const [points, setPoints] = useState<Point[]>([]);
+  const [points, setPoints] = useState<PatrolPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [editingPoint, setEditingPoint] = useState<Point | null>(null);
-  const [selectedPoint, setSelectedPoint] = useState<Point | null>(null);
+  const [editingPoint, setEditingPoint] = useState<PatrolPoint | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<PatrolPoint | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState<PointQuery>({});
-  const [options, setOptions] = useState<{
-    regions: { label: string; value: string }[];
-    safetyOfficers: { label: string; value: string }[];
-  }>({ regions: [], safetyOfficers: [] });
+  const [searchQuery, setSearchQuery] = useState<PatrolPointQuery>({});
+  const [departments, setDepartments] = useState<{ label: string; value: number }[]>([]);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
@@ -51,8 +49,17 @@ const PointManagement: React.FC = () => {
   const fetchPoints = async () => {
     setLoading(true);
     try {
-      const response = await pointApi.getPoints(searchQuery);
-      setPoints(response.data);
+      const queryParams = {
+        ...searchQuery,
+        pageNum: pagination.current,
+        pageSize: pagination.pageSize,
+      };
+      const response = await patrolPointApi.getPatrolPoints(queryParams);
+      setPoints(response.rows || []);
+      setPagination(prev => ({
+        ...prev,
+        total: response.total || 0,
+      }));
     } catch (error) {
       message.error('获取点位列表失败');
     } finally {
@@ -60,24 +67,28 @@ const PointManagement: React.FC = () => {
     }
   };
 
-  // 获取选项数据
-  const fetchOptions = async () => {
+  // 获取部门列表
+  const fetchDepartments = async () => {
     try {
-      const optionsData = await getSelectOptions();
-      setOptions(optionsData);
+      const response = await departmentApi.getDepartments({});
+      setDepartments(response.rows?.map(dept => ({
+        label: dept.deptName,
+        value: dept.deptId,
+      })) || []);
     } catch (error) {
-      message.error('获取选项数据失败');
+      console.error('获取部门列表失败:', error);
     }
   };
 
   useEffect(() => {
     fetchPoints();
-    fetchOptions();
-  }, [searchQuery]);
+    fetchDepartments();
+  }, [searchQuery, pagination.current, pagination.pageSize]);
 
   // 搜索功能
-  const handleSearch = (values: PointQuery) => {
+  const handleSearch = (values: PatrolPointQuery) => {
     setSearchQuery(values);
+    setPagination(prev => ({ ...prev, current: 1 }));
   };
 
   // 重置搜索
@@ -94,16 +105,19 @@ const PointManagement: React.FC = () => {
   };
 
   // 编辑点位
-  const handleEdit = (record: Point) => {
+  const handleEdit = (record: PatrolPoint) => {
     setEditingPoint(record);
     setModalVisible(true);
-    form.setFieldsValue(record);
+    form.setFieldsValue({
+      ...record,
+      deptId: record.deptId,
+    });
   };
 
   // 删除点位
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (pointId: number) => {
     try {
-      await pointApi.deletePoint(id);
+      await patrolPointApi.deletePatrolPoints([pointId]);
       message.success('删除成功');
       fetchPoints();
     } catch (error) {
@@ -112,13 +126,13 @@ const PointManagement: React.FC = () => {
   };
 
   // 提交表单
-  const handleSubmit = async (values: PointForm) => {
+  const handleSubmit = async (values: PatrolPointForm) => {
     try {
       if (editingPoint) {
-        await pointApi.updatePoint(editingPoint.id, values);
+        await patrolPointApi.updatePatrolPoint(editingPoint.pointId, values);
         message.success('更新成功');
       } else {
-        await pointApi.createPoint(values);
+        await patrolPointApi.createPatrolPoint(values);
         message.success('新增成功');
       }
       setModalVisible(false);
@@ -129,7 +143,7 @@ const PointManagement: React.FC = () => {
   };
 
   // 预览二维码
-  const handlePreviewQR = async (record: Point) => {
+  const handlePreviewQR = async (record: PatrolPoint) => {
     try {
       setSelectedPoint(record);
       
@@ -231,14 +245,20 @@ const PointManagement: React.FC = () => {
       dataIndex: 'pointId',
       key: 'pointId',
       width: 120,
-      render: (text: string, record: Point) => {
-        return record.pointId || record.code || record.id;
+      render: (text: string, record: PatrolPoint) => {
+        return record.pointId;
       },
     },
     {
-      title: '所属学院/部门',
-      dataIndex: 'regionName',
-      key: 'regionName',
+      title: '点位名称',
+      dataIndex: 'pointName',
+      key: 'pointName',
+      width: 150,
+    },
+    {
+      title: '所属部门',
+      dataIndex: 'deptName',
+      key: 'deptName',
       width: 150,
     },
     {
@@ -266,17 +286,16 @@ const PointManagement: React.FC = () => {
       width: 120,
     },
     {
-      title: '负责安全员',
-      dataIndex: 'safetyOfficerName',
-      key: 'safetyOfficerName',
+      title: '创建时间',
+      dataIndex: 'createTime',
+      key: 'createTime',
       width: 150,
-      render: (text: string, record: Point) => {
-        const officer = options.safetyOfficers.find(o => o.value === record.safetyOfficerId);
-        if (officer) {
-          // 从安全员选项中获取完整信息，选项格式应该是 "姓名-部门"
-          return officer.label;
+      render: (text: string | Date) => {
+        if (!text) return '-';
+        if (text instanceof Date) {
+          return text.toLocaleString();
         }
-        return text || '-';
+        return text;
       },
     },
     {
@@ -284,7 +303,7 @@ const PointManagement: React.FC = () => {
       key: 'action',
       width: 280,
       fixed: 'right' as const,
-      render: (_: any, record: Point) => (
+      render: (_: any, record: PatrolPoint) => (
         <Space size={4}>
           <Button
             type="link"
@@ -302,7 +321,7 @@ const PointManagement: React.FC = () => {
           </Button>
           <Popconfirm
             title="确定要删除这个点位吗？"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => handleDelete(record.pointId)}
             okText="确定"
             cancelText="取消"
           >
@@ -325,18 +344,18 @@ const PointManagement: React.FC = () => {
           onFinish={handleSearch}
           style={{ marginBottom: 20 }}
         >
-          <Form.Item name="name" label="点位名称">
+          <Form.Item name="pointName" label="点位名称">
             <Input placeholder="请输入点位名称" allowClear />
           </Form.Item>
-          <Form.Item name="code" label="点位编码">
+          <Form.Item name="pointId" label="点位编码">
             <Input placeholder="请输入点位编码" allowClear />
           </Form.Item>
-          <Form.Item name="regionId" label="所属学院/部门">
+          <Form.Item name="deptId" label="所属部门">
             <Select
-              placeholder="请选择学院/部门"
+              placeholder="请选择部门"
               allowClear
               style={{ width: 180 }}
-              options={options.regions}
+              options={departments}
             />
           </Form.Item>
           <Form.Item>

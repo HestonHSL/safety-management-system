@@ -18,7 +18,7 @@ import PointDetailH5 from './pages/PointDetailH5';
 import Login from './pages/Login';
 import ApiDebugger from './components/ApiDebugger';
 import { User, UserRole } from './types';
-import { authApi } from './services/api';
+import { authApi } from './services';
 import './App.css';
 
 const { Header, Sider, Content } = Layout;
@@ -108,7 +108,7 @@ const AppContent: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await authApi.logout();
+      // await authApi.logout();
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       message.success('退出登录成功');
@@ -148,7 +148,7 @@ const AppContent: React.FC = () => {
     }
 
     // 在开发环境下添加调试工具菜单
-    if (process.env.NODE_ENV === 'development' || process.env.REACT_APP_SHOW_DEBUG === 'true') {
+    if (import.meta.env.DEV || import.meta.env.VITE_SHOW_DEBUG === 'true') {
       baseItems.push({
         key: '/debug',
         icon: <BugOutlined />,
@@ -247,7 +247,7 @@ const AppContent: React.FC = () => {
                 } 
               />
               {/* 调试工具路由 - 仅在开发环境下可用 */}
-              {(process.env.NODE_ENV === 'development' || process.env.REACT_APP_SHOW_DEBUG === 'true') && (
+              {(import.meta.env.DEV || import.meta.env.VITE_SHOW_DEBUG === 'true') && (
                 <Route path="/debug" element={<ApiDebugger />} />
               )}
             </Routes>

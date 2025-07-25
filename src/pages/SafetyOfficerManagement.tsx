@@ -23,23 +23,23 @@ import {
   UploadOutlined,
   DownloadOutlined
 } from '@ant-design/icons';
-import { SafetyOfficer, SafetyOfficerForm, SafetyOfficerQuery, Point } from '../types';
-import { safetyOfficerApi, pointApi, API_CONFIG } from '../services';
+import { SecurityGuard, SecurityGuardForm, SecurityGuardQuery, PatrolPoint } from '../types';
+import { securityGuardApi, patrolPointApi, API_CONFIG } from '../services';
 import { exportToExcel, readExcelFile } from '../utils/export';
 
 const SafetyOfficerManagement: React.FC = () => {
-  const [officers, setOfficers] = useState<SafetyOfficer[]>([]);
+  const [officers, setOfficers] = useState<SecurityGuard[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingOfficer, setEditingOfficer] = useState<SafetyOfficer | null>(null);
-  const [searchQuery, setSearchQuery] = useState<SafetyOfficerQuery>({});
+  const [editingOfficer, setEditingOfficer] = useState<SecurityGuard | null>(null);
+  const [searchQuery, setSearchQuery] = useState<SecurityGuardQuery>({});
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
-  const [points, setPoints] = useState<Point[]>([]);
+  const [points, setPoints] = useState<PatrolPoint[]>([]);
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
 
   // 选择使用的API
-  const currentApi = safetyOfficerApi;
+  const currentApi = securityGuardApi;
 
   // 获取安全员列表
   const fetchOfficers = async () => {
@@ -51,24 +51,16 @@ const SafetyOfficerManagement: React.FC = () => {
         pageSize: pagination.pageSize,
       };
       
-      const response = await currentApi.getSafetyOfficers(queryParams);
-      setOfficers(response.data);
+      const response = await currentApi.getSecurityGuards(queryParams);
+      setOfficers(response.rows || []);
       
       // 更新分页信息
-      if (API_CONFIG.USE_REAL_API) {
-        const realResponse = response as any; // 真实API响应类型
-        setPagination(prev => ({
-          ...prev,
-          total: realResponse.total || 0,
-          current: realResponse.pageNum || 1,
-          pageSize: realResponse.pageSize || 10,
-        }));
-      } else {
-        setPagination(prev => ({
-          ...prev,
-          total: response.data.length,
-        }));
-      }
+      setPagination(prev => ({
+        ...prev,
+        total: response.total || 0,
+        current: queryParams.pageNum || 1,
+        pageSize: queryParams.pageSize || 10,
+      }));
     } catch (error) {
       message.error('获取安全员列表失败');
     } finally {
@@ -79,8 +71,9 @@ const SafetyOfficerManagement: React.FC = () => {
   // 获取点位列表
   const fetchPoints = async () => {
     try {
-      const response = await pointApi.getPoints({ pageNum: 1, pageSize: 1000 }); // 获取所有点位
-      setPoints(response.data);
+      // 注意：这里暂时使用空数组，因为API文档中没有点位列表接口
+      // 实际使用时需要根据后端提供的接口调整
+      setPoints([]);
     } catch (error) {
       console.error('获取点位列表失败:', error);
     }
@@ -95,7 +88,7 @@ const SafetyOfficerManagement: React.FC = () => {
   }, []);
 
   // 搜索功能
-  const handleSearch = (values: SafetyOfficerQuery) => {
+  const handleSearch = (values: SecurityGuardQuery) => {
     setSearchQuery(values);
     setPagination(prev => ({ ...prev, current: 1 })); // 重置到第一页
   };
@@ -115,28 +108,25 @@ const SafetyOfficerManagement: React.FC = () => {
   };
 
   // 编辑安全员
-  const handleEdit = (record: SafetyOfficer) => {
+  const handleEdit = (record: SecurityGuard) => {
     setEditingOfficer(record);
     setModalVisible(true);
     
-    // 根据API类型设置表单值
-    const formValues = API_CONFIG.USE_REAL_API ? {
+    // 设置表单值
+    form.setFieldsValue({
       name: record.name,
-      dept: record.dept || record.department,
-      officePhone: record.officePhone || record.phone,
-      phoneNumber: record.phoneNumber || record.mobile,
+      deptId: record.deptId,
+      officePhone: record.officePhone,
+      phoneNumber: record.phoneNumber,
       wechatId: record.wechatId,
-      guardId: record.guardId,
-      pointIds: (record as any).pointIds || [],
-    } : record;
-    
-    form.setFieldsValue(formValues);
+      remark: record.remark,
+    });
   };
 
   // 删除安全员
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (guardId: number) => {
     try {
-      await currentApi.deleteSafetyOfficer(id);
+      await currentApi.deleteSecurityGuards([guardId]);
       message.success('删除成功');
       fetchOfficers();
     } catch (error) {
@@ -145,13 +135,13 @@ const SafetyOfficerManagement: React.FC = () => {
   };
 
   // 提交表单
-  const handleSubmit = async (values: SafetyOfficerForm) => {
+  const handleSubmit = async (values: SecurityGuardForm) => {
     try {
       if (editingOfficer) {
-        await currentApi.updateSafetyOfficer(editingOfficer.id, values);
+        await currentApi.updateSecurityGuard({ ...values, guardId: editingOfficer.guardId });
         message.success('更新成功');
       } else {
-        await currentApi.createSafetyOfficer(values);
+        await currentApi.createSecurityGuard(values);
         message.success('新增成功');
       }
       setModalVisible(false);
@@ -164,48 +154,23 @@ const SafetyOfficerManagement: React.FC = () => {
   // 导出数据
   const handleExport = async () => {
     try {
-      if (API_CONFIG.USE_REAL_API) {
-        // 调用真实API导出
-        const blob = await safetyOfficerApi.exportSafetyOfficers({
-          name: searchQuery.name,
-          phoneNumber: searchQuery.phoneNumber,
-        });
-        
-        // 创建下载链接
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `安全员信息_${new Date().toLocaleDateString()}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        message.success('导出成功');
-      } else {
-        // 使用本地导出
-        const exportData = officers.map(officer => {
-          const pointNames = (officer as any).pointIds?.map((id: string) => {
-            const point = points.find(p => p.id === id);
-            return point ? (point.pointName || point.name) : id;
-          }).join(', ') || '';
-          
-          return {
-            姓名: officer.name,
-            部门: officer.dept || officer.department,
-            办公室电话: officer.officePhone || officer.phone,
-            手机号码: officer.phoneNumber || officer.mobile || '',
-            微信号: officer.wechatId || '',
-            负责点位: pointNames,
-            创建时间: officer.createTime || ''
-          };
-        });
-        
-        exportToExcel(exportData, '安全员信息', [
-          '姓名', '部门', '办公室电话', '手机号码', '微信号', '负责点位', '创建时间'
-        ]);
-        message.success('导出成功');
-      }
+      // 调用真实API导出
+      const blob = await currentApi.exportSecurityGuards({
+        name: searchQuery.name,
+        phoneNumber: searchQuery.phoneNumber,
+      });
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `安全员信息_${new Date().toLocaleDateString()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      message.success('导出成功');
     } catch (error) {
       message.error('导出失败');
     }
@@ -241,21 +206,21 @@ const SafetyOfficerManagement: React.FC = () => {
     },
     {
       title: '部门',
-      dataIndex: 'dept',
-      key: 'dept',
-      render: (text: string, record: SafetyOfficer) => text || record.department || '-',
+      dataIndex: 'deptName',
+      key: 'deptName',
+      render: (text: string) => text || '-',
     },
     {
       title: '办公室电话',
       dataIndex: 'officePhone',
       key: 'officePhone',
-      render: (text: string, record: SafetyOfficer) => text || record.phone || '-',
+      render: (text: string) => text || '-',
     },
     {
       title: '手机号码',
       dataIndex: 'phoneNumber',
       key: 'phoneNumber',
-      render: (text: string, record: SafetyOfficer) => text || record.mobile || '-',
+      render: (text: string) => text || '-',
     },
     {
       title: '微信号',
@@ -264,28 +229,22 @@ const SafetyOfficerManagement: React.FC = () => {
       render: (text: string) => text || '-',
     },
     {
-      title: '负责点位',
-      dataIndex: 'pointIds',
-      key: 'pointIds',
-      render: (pointIds: string[], record: SafetyOfficer) => {
-        if (!pointIds || pointIds.length === 0) return '-';
-        const pointNames = pointIds.map(id => {
-          const point = points.find(p => p.id === id);
-          return point ? (point.pointName || point.name) : id;
-        });
-        return pointNames.join(', ');
-      },
-    },
-    {
       title: '创建时间',
       dataIndex: 'createTime',
       key: 'createTime',
+      render: (time: Date | string) => {
+        if (!time) return '-';
+        if (time instanceof Date) {
+          return time.toLocaleString();
+        }
+        return time;
+      },
     },
     {
       title: '操作',
       key: 'action',
       width: 200,
-      render: (_: any, record: SafetyOfficer) => (
+      render: (_: any, record: SecurityGuard) => (
         <Space size={4}>
           <Button
             type="link"
@@ -296,7 +255,7 @@ const SafetyOfficerManagement: React.FC = () => {
           </Button>
           <Popconfirm
             title="确定要删除这个安全员吗？"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => handleDelete(record.guardId || 0)}
             okText="确定"
             cancelText="取消"
           >
@@ -362,7 +321,7 @@ const SafetyOfficerManagement: React.FC = () => {
         <Table
           columns={columns}
           dataSource={officers}
-          rowKey="id"
+          rowKey="guardId"
           loading={loading}
           pagination={{
             current: pagination.current,

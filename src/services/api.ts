@@ -14,7 +14,7 @@ let regions: Region[] = [
     pointCount: 15
   },
   {
-    id: '2', 
+    id: '2',
     name: '计算机科学学院',
     areaName: '计算机科学学院',
     description: '计算机科学学院管辖区域',
@@ -149,25 +149,25 @@ let points: Point[] = [
 // 区域管理API
 export const regionApi = {
   // 获取区域列表（增强版本，支持分页）
-  getRegions: async (params?: any): Promise<{ 
-    data: Region[], 
+  getRegions: async (params?: any): Promise<{
+    data: Region[],
     total: number,
     pageNum: number,
-    pageSize: number 
+    pageSize: number
   }> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     let filteredRegions = regions;
     if (params?.name || params?.areaName) {
-      filteredRegions = regions.filter(region => 
+      filteredRegions = regions.filter(region =>
         region.name.includes(params.name || params.areaName)
       );
     }
-    
+
     const pageNum = params?.pageNum || 1;
     const pageSize = params?.pageSize || 10;
     const startIndex = (pageNum - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    
+
     return {
       data: filteredRegions.slice(startIndex, endIndex),
       total: filteredRegions.length,
@@ -269,7 +269,7 @@ export const regionApi = {
   // 导出区域列表
   exportRegions: async (params?: any): Promise<Blob> => {
     await new Promise(resolve => setTimeout(resolve, 300));
-    const csvContent = regions.map(region => 
+    const csvContent = regions.map(region =>
       `${region.id},${region.name},${region.description || ''},${region.createTime}`
     ).join('\n');
     return new Blob([csvContent], { type: 'text/csv' });
@@ -283,7 +283,7 @@ export const safetyOfficerApi = {
     await new Promise(resolve => setTimeout(resolve, 300));
     let filteredOfficers = safetyOfficers;
     if (params?.name) {
-      filteredOfficers = safetyOfficers.filter(officer => 
+      filteredOfficers = safetyOfficers.filter(officer =>
         officer.name.includes(params.name)
       );
     }
@@ -358,7 +358,7 @@ export const safetyOfficerApi = {
     await new Promise(resolve => setTimeout(resolve, 300));
     let filteredOfficers = safetyOfficers;
     if (params?.name) {
-      filteredOfficers = safetyOfficers.filter(officer => 
+      filteredOfficers = safetyOfficers.filter(officer =>
         officer.name.includes(params.name || '')
       );
     }
@@ -367,11 +367,11 @@ export const safetyOfficerApi = {
         (officer.phoneNumber || officer.mobile || '').includes(params.phoneNumber || '')
       );
     }
-    
-    const csvContent = filteredOfficers.map(officer => 
+
+    const csvContent = filteredOfficers.map(officer =>
       `${officer.id},${officer.name},${officer.dept || officer.department || ''},${officer.officePhone || officer.phone || ''},${officer.phoneNumber || officer.mobile || ''},${officer.wechatId || ''},${officer.createTime || ''}`
     ).join('\n');
-    
+
     const csvHeader = 'ID,姓名,部门,办公电话,手机号码,微信号,创建时间\n';
     return new Blob([csvHeader + csvContent], { type: 'text/csv;charset=utf-8;' });
   }
@@ -380,11 +380,11 @@ export const safetyOfficerApi = {
 // 点位管理API
 export const pointApi = {
   // 获取点位列表
-  getPoints: async (params?: any): Promise<{ 
-    data: Point[], 
+  getPoints: async (params?: any): Promise<{
+    data: Point[],
     total: number,
     pageNum: number,
-    pageSize: number 
+    pageSize: number
   }> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     let filteredPoints = points.map(point => ({
@@ -392,10 +392,10 @@ export const pointApi = {
       regionName: regions.find(r => r.id === (point.areaId || point.regionId))?.name,
       safetyOfficerName: safetyOfficers.find(o => o.id === (point.guardId || point.safetyOfficerId))?.name
     }));
-    
+
     // 支持新的搜索参数
     if (params?.pointName) {
-      filteredPoints = filteredPoints.filter(point => 
+      filteredPoints = filteredPoints.filter(point =>
         (point.pointName || point.name || '').includes(params.pointName)
       );
     }
@@ -424,10 +424,10 @@ export const pointApi = {
         (point.guardId || point.safetyOfficerId) === params.guardId
       );
     }
-    
+
     // 兼容旧参数
     if (params?.name) {
-      filteredPoints = filteredPoints.filter(point => 
+      filteredPoints = filteredPoints.filter(point =>
         (point.pointName || point.name || '').includes(params.name)
       );
     }
@@ -441,12 +441,12 @@ export const pointApi = {
         (point.areaId || point.regionId) === params.regionId
       );
     }
-    
+
     const pageNum = params?.pageNum || 1;
     const pageSize = params?.pageSize || 10;
     const startIndex = (pageNum - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    
+
     return {
       data: filteredPoints.slice(startIndex, endIndex),
       total: filteredPoints.length,
@@ -536,7 +536,7 @@ export const pointApi = {
   // 导出点位列表
   exportPoints: async (params?: any): Promise<Blob> => {
     await new Promise(resolve => setTimeout(resolve, 300));
-    const csvContent = points.map(point => 
+    const csvContent = points.map(point =>
       `${point.id},${point.pointName || point.name},${point.college || ''},${point.building || ''},${point.floor || ''},${point.areaId || point.regionId},${point.guardId || point.safetyOfficerId || ''},${point.createTime || ''}`
     ).join('\n');
     const csvHeader = 'ID,点位名称,学院,楼栋,楼层,区域ID,安全员ID,创建时间\n';
@@ -606,26 +606,26 @@ export const authApi = {
   // 登录（支持rememberMe字段）
   login: async (data: LoginForm): Promise<LoginResponse> => {
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // 模拟密码验证
     const passwordMap: Record<string, string> = {
       'superadmin': 'admin123',
       'admin001': 'admin123'
     };
-    
+
     if (passwordMap[data.username] !== data.password) {
       throw new Error('用户名或密码错误');
     }
-    
+
     const user = users.find(u => u.username === data.username);
     if (!user || user.status !== 'active') {
       throw new Error('用户不存在或已被禁用');
     }
-    
+
     // 更新最后登录时间
     user.lastLoginTime = new Date().toLocaleString();
     currentUser = user;
-    
+
     // 处理记住我功能（模拟）
     if (data.rememberMe) {
       localStorage.setItem('rememberMe', 'true');
@@ -633,7 +633,7 @@ export const authApi = {
     } else {
       localStorage.removeItem('rememberMe');
     }
-    
+
     return {
       user,
       token: `mock_token_${user.id}_${Date.now()}`
@@ -660,9 +660,9 @@ export const userApi = {
   getUsers: async (params?: UserQuery): Promise<{ data: User[], total: number }> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     let filteredUsers = users;
-    
+
     if (params?.name) {
-      filteredUsers = filteredUsers.filter(user => 
+      filteredUsers = filteredUsers.filter(user =>
         user.name.includes(params.name!)
       );
     }
@@ -681,7 +681,7 @@ export const userApi = {
         user.status === params.status
       );
     }
-    
+
     return {
       data: filteredUsers,
       total: filteredUsers.length
@@ -691,12 +691,12 @@ export const userApi = {
   // 创建用户
   createUser: async (data: UserForm): Promise<User> => {
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     // 检查用户名是否已存在
     if (users.find(u => u.username === data.username)) {
       throw new Error('用户名已存在');
     }
-    
+
     const newUser: User = {
       id: Date.now().toString(),
       ...data,
@@ -718,7 +718,7 @@ export const userApi = {
           throw new Error('用户名已存在');
         }
       }
-      
+
       users[index] = {
         ...users[index],
         ...data,
@@ -764,11 +764,11 @@ export const downloadApi = {
   // 文件下载
   downloadFile: async (fileName: string, deleteAfterDownload: boolean = false): Promise<Blob> => {
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     // 模拟文件内容
     let content = '';
     const fileExtension = fileName.split('.').pop()?.toLowerCase();
-    
+
     switch (fileExtension) {
       case 'xlsx':
       case 'xls':
@@ -783,12 +783,12 @@ export const downloadApi = {
       default:
         content = `这是模拟的${fileName}文件内容`;
     }
-    
+
     // 如果设置了删除标志，模拟删除操作
     if (deleteAfterDownload) {
       console.log(`模拟删除文件: ${fileName}`);
     }
-    
+
     return new Blob([content], { type: 'application/octet-stream' });
   },
 };
@@ -837,26 +837,26 @@ export const departmentApi = {
     pageSize: number;
   }> => {
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     let filteredData = [...departments];
-    
+
     if (params?.deptName) {
-      filteredData = filteredData.filter(dept => 
+      filteredData = filteredData.filter(dept =>
         dept.deptName.includes(params.deptName!)
       );
     }
-    
+
     if (params?.deptCode) {
-      filteredData = filteredData.filter(dept => 
+      filteredData = filteredData.filter(dept =>
         dept.deptCode.includes(params.deptCode!)
       );
     }
-    
+
     const pageSize = params?.pageSize || 10;
     const pageNum = params?.pageNum || 1;
     const start = (pageNum - 1) * pageSize;
     const end = start + pageSize;
-    
+
     return {
       data: filteredData.slice(start, end),
       total: filteredData.length,
@@ -907,7 +907,7 @@ export const departmentApi = {
   // 导出部门
   exportDepartments: async (): Promise<Blob> => {
     await new Promise(resolve => setTimeout(resolve, 1000));
-    const csvContent = departments.map(dept => 
+    const csvContent = departments.map(dept =>
       `${dept.deptCode},${dept.deptName},${dept.orderNum},${dept.pointCount || 0}`
     ).join('\n');
     return new Blob([csvContent], { type: 'text/csv' });
