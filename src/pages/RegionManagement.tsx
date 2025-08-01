@@ -26,8 +26,8 @@ import {
   MoreOutlined,
   FolderOutlined
 } from '@ant-design/icons';
-import { Department, DepartmentForm, DepartmentQuery } from '../types';
-import { departmentApi } from '../services';
+import { Department, DepartmentForm, DepartmentQuery, DepartmentFormWithDeptId } from '../types';
+import { departmentApi } from '../services/api';
 
 const { Text } = Typography;
 
@@ -266,6 +266,8 @@ const RegionManagement: React.FC = () => {
       // 注意：由于API文档中没有分页的部门列表接口，这里使用树形接口
       const response = await departmentApi.getDepartmentTree(searchQuery);
       setDepartments(response.data);
+      console.log("searchQuery", searchQuery);
+      console.log("response", response);
       setPagination(prev => ({
         ...prev,
         current: pageNum,
@@ -286,6 +288,7 @@ const RegionManagement: React.FC = () => {
       const response = await departmentApi.getDepartmentTree({
         deptName: searchValue
       });
+      console.log("treeRespnse", response);
       setAllDepartments(response.data);
       const tree = buildTreeData(response.data, searchValue);
       setTreeData(tree);
@@ -341,9 +344,15 @@ const RegionManagement: React.FC = () => {
 
   // 搜索功能
   const handleSearch = (values: DepartmentQuery) => {
-    setSearchQuery(values);
+    values.deptName = values.deptName || "";
+    values.deptCode = values.deptCode || "";
     setSearchValue(values.deptName || '');
+    setSearchQuery(values);
     setPagination(prev => ({ ...prev, current: 1 })); // 重置到第一页
+
+    // 同时更新左侧树和右侧列表
+    // fetchDepartments(1, pagination.pageSize);
+    // fetchAllDepartments();
   };
 
   // 重置搜索
@@ -390,6 +399,7 @@ const RegionManagement: React.FC = () => {
     setEditingDepartment(record);
     setModalVisible(true);
     form.setFieldsValue({
+      // deptId: record.deptId, // 添加 deptId
       deptName: record.deptName,
       deptCode: record.deptCode,
       parentId: record.parentId || 0,
@@ -401,7 +411,7 @@ const RegionManagement: React.FC = () => {
   // 删除部门
   const handleDelete = async (deptId: number) => {
     try {
-      await departmentApi.deleteDepartments([deptId]);
+      await departmentApi.deleteDepartments(deptId.toString());
       message.success('删除成功');
       fetchDepartments(); // 刷新表格数据
       fetchAllDepartments(); // 刷新树形数据
@@ -416,9 +426,27 @@ const RegionManagement: React.FC = () => {
     try {
       // 注意：API文档中没有创建和更新部门的接口，这里保留原有逻辑
       // 实际使用时需要根据后端提供的接口进行调整
-      message.warning('部门创建和更新功能需要后端提供相应接口');
+      // message.warning('部门创建和更新功能需要后端提供相应接口');
+      if (!editingDepartment) {
+        // console.log(values);
+        await departmentApi.createDepartment(values);
+
+      }
+      else {
+        console.log(values); //缺少deptId
+        const departmentFormWithDeptId: DepartmentFormWithDeptId = {
+          ...values,
+          deptId: (editingDepartment.deptId)?.toString() as string,
+        };
+        await departmentApi.updateDepartment(departmentFormWithDeptId);
+      }
       setModalVisible(false);
+
+      // 自动刷新数据
+      fetchDepartments(); // 刷新表格数据
+      fetchAllDepartments(); // 刷新树形数据
     } catch (error) {
+      console.log(error);
       message.error(editingDepartment ? '更新失败' : '新增失败');
     }
   };
@@ -637,6 +665,7 @@ const RegionManagement: React.FC = () => {
           <Form.Item
             name="deptCode"
             label="部门编码"
+            rules={[{ required: true, message: '请输入部门编码' }]}
           >
             <Input placeholder="请输入部门编码" />
           </Form.Item>

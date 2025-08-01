@@ -5,7 +5,7 @@ export interface Department extends BaseEntity {
   ancestors?: string;
   children?: Department[];
   createBy?: string;
-  createTime?: Date | string;
+  // createTime?: Date | string;
   delFlag?: string;
   deptCode?: string;
   deptId?: number;
@@ -18,19 +18,60 @@ export interface Department extends BaseEntity {
   remark?: string;
   status?: string;
   updateBy?: string;
-  updateTime?: Date | string;
+  // updateTime?: Date | string;
   [property: string]: any;
 }
 
 // 部门表单类型
 export interface DepartmentForm {
-  deptId?: number;
-  deptCode?: string;
-  deptName: string;
-  orderNum?: number;
-  parentId?: number;
-  remark?: string;
-  status?: string;
+    /**
+     * 部门编码
+     */
+    deptCode: string;
+    /**
+     * 部门名称
+     */
+    deptName?: string;
+    /**
+     * 显示顺序
+     */
+    orderNum?: number;
+    /**
+     * 上级部门ID
+     */
+    parentId: number;
+    /**
+     * 备注
+     */
+    remark?: string;
+}
+
+export interface DepartmentFormWithDeptId {
+    /**
+     * 部门编码
+     */
+    deptCode: string;
+    /**
+     * 部门ID
+     */
+    deptId: string;
+    /**
+     * 部门名称
+     */
+    deptName?: string;
+    /**
+     * 显示顺序
+     */
+    orderNum?: number;
+    /**
+     * 上级部门ID
+     */
+    parentId: number;
+    /**
+     * 备注
+     */
+    remark?: string;
+    [property: string]: any;
 }
 
 // 部门查询参数类型
@@ -41,3 +82,35 @@ export interface DepartmentQuery {
   parentId?: number;
 }
 
+//部门分页查询
+export interface DepartmentPageQuery {
+    /**
+     * 部门编码
+     */
+    deptCode?: string;
+    /**
+     * 部门ID
+     */
+    deptId?: number;
+    /**
+     * 部门名称
+     */
+    deptName?: string;
+    isAsc?: string;
+    /**
+     * 排序字段
+     */
+    orderByColumn?: string;
+    /**
+     * 当前页数
+     */
+    pageNum?: number;
+    /**
+     * 每页记录数
+     */
+    pageSize?: number;
+    /**
+     * 上级部门ID
+     */
+    parentId?: number;
+}

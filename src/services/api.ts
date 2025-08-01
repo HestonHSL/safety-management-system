@@ -1,4 +1,5 @@
-import { Region, SafetyOfficer, Point, RegionForm, SafetyOfficerForm, PointForm, User, UserForm, LoginForm, LoginResponse, UserRole, UserQuery, Department, DepartmentForm, DepartmentQuery } from '../types';
+import { Region, SafetyOfficer, Point, RegionForm, SafetyOfficerForm, SecurityGuardPageQuery, PointForm, User, UserForm, LoginForm, LoginResponse, UserRole, UserQuery, Department, DepartmentForm, DepartmentQuery, DepartmentPageQuery, DepartmentFormWithDeptId } from '../types';
+import { httpClient } from './httpClient';
 
 // 模拟数据 - 简化的区域数据
 let regions: Region[] = [
@@ -279,23 +280,26 @@ export const regionApi = {
 // 安全员管理API
 export const safetyOfficerApi = {
   // 获取安全员列表
-  getSafetyOfficers: async (params?: any): Promise<{ data: SafetyOfficer[], total: number }> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    let filteredOfficers = safetyOfficers;
-    if (params?.name) {
-      filteredOfficers = safetyOfficers.filter(officer =>
-        officer.name.includes(params.name)
-      );
-    }
-    if (params?.department) {
-      filteredOfficers = filteredOfficers.filter(officer =>
-        (officer.dept || officer.department || '').includes(params.department)
-      );
-    }
-    return {
-      data: filteredOfficers,
-      total: filteredOfficers.length
-    };
+  getSafetyOfficers: async (params?: SecurityGuardPageQuery): Promise<{ data: SafetyOfficer[], total: number }> => {
+    // await new Promise(resolve => setTimeout(resolve, 300));
+    // let filteredOfficers = safetyOfficers;
+    // if (params?.name) {
+    //   filteredOfficers = safetyOfficers.filter(officer =>
+    //     officer.name.includes(params.name)
+    //   );
+    // }
+    // if (params?.department) {
+    //   filteredOfficers = filteredOfficers.filter(officer =>
+    //     (officer.dept || officer.department || '').includes(params.department)
+    //   );
+    // }
+    // return {
+    //   data: filteredOfficers,
+    //   total: filteredOfficers.length
+    // };
+
+    const res = await httpClient.get('/campus/guard/list', params);
+    return { total: res.total as number, data: res.rows as SafetyOfficer[]};
   },
 
   // 创建安全员
@@ -830,78 +834,55 @@ let departments: Department[] = [
 // 部门API
 export const departmentApi = {
   // 获取部门列表
-  getDepartments: async (params?: DepartmentQuery): Promise<{
-    data: Department[];
-    total: number;
-    pageNum: number;
-    pageSize: number;
+  getDepartments: async (params: DepartmentPageQuery): Promise<{
+    total?: number,
+    data?: any,
   }> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    let filteredData = [...departments];
-
-    if (params?.deptName) {
-      filteredData = filteredData.filter(dept =>
-        dept.deptName.includes(params.deptName!)
-      );
-    }
-
-    if (params?.deptCode) {
-      filteredData = filteredData.filter(dept =>
-        dept.deptCode.includes(params.deptCode!)
-      );
-    }
-
-    const pageSize = params?.pageSize || 10;
-    const pageNum = params?.pageNum || 1;
-    const start = (pageNum - 1) * pageSize;
-    const end = start + pageSize;
-
-    return {
-      data: filteredData.slice(start, end),
-      total: filteredData.length,
-      pageNum,
-      pageSize
-    };
+    const res = await httpClient.get('/campus/department/list', params);
+    return {total: res.total, data: res.rows};
   },
 
   // 获取部门树
-  getDepartmentTree: async (): Promise<{ data: Department[] }> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return { data: departments };
+  getDepartmentTree: async (params: DepartmentQuery): Promise<{ data: Department[] }> => {
+    const res = await httpClient.get('/campus/department/tree', params);
+    return { data: res.data as Department[] };
   },
 
+  getDepartmentListByParentId: async(params: { parentId: number }): Promise<{ data: Department[] }> => {
+    const res = await httpClient.get(`/campus/department/children/${params.parentId}`,);
+    return { data: res.data as Department[] };
+  },
+
+  getDepartmentListByDeptId: async(params: { deptId: number }): Promise<{ data: Department[] }> => {
+    const res = await httpClient.get(`/campus/department/${params.deptId}`, );
+    return { data: res.data as Department[] };
+  },
   // 创建部门
-  createDepartment: async (data: DepartmentForm): Promise<Department> => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const newDept: Department = {
-      deptId: Date.now().toString(),
-      ...data,
-      createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      pointCount: 0
-    };
-    departments.push(newDept);
-    return newDept;
+  createDepartment: async (data: DepartmentForm): Promise<void> => {
+    const res = await httpClient.post('/campus/department', data);
   },
 
   // 更新部门
-  updateDepartment: async (deptId: string, data: DepartmentForm): Promise<Department> => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const index = departments.findIndex(dept => dept.deptId === deptId);
-    if (index >= 0) {
-      departments[index] = { ...departments[index], ...data };
-      return departments[index];
-    }
-    throw new Error('部门不存在');
+  updateDepartment: async (data: DepartmentFormWithDeptId): Promise<void> => {
+    // await new Promise(resolve => setTimeout(resolve, 1000));
+    // const index = departments.findIndex(dept => dept.deptId === deptId);
+    // if (index >= 0) {
+    //   departments[index] = { ...departments[index], ...data };
+    //   return departments[index];
+    // }
+    // throw new Error('部门不存在');
+    const res = await httpClient.put('/campus/department', data);
+    
   },
 
   // 删除部门
-  deleteDepartment: async (deptId: string): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const index = departments.findIndex(dept => dept.deptId === deptId);
-    if (index >= 0) {
-      departments.splice(index, 1);
-    }
+  deleteDepartments: async (deptIds: string): Promise<void> => {
+    // await new Promise(resolve => setTimeout(resolve, 1000));
+    // const index = departments.findIndex(dept => dept.deptId === deptId);
+    // if (index >= 0) {
+    //   departments.splice(index, 1);
+    // }
+    await httpClient.delete(`/campus/department/${deptIds}`, );
   },
 
   // 导出部门

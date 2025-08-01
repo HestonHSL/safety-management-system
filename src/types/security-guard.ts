@@ -3,7 +3,7 @@ import { BaseEntity, BaseQuery } from './common';
 // 安全员类型（根据后端返回的数据结构）
 export interface SecurityGuard extends BaseEntity {
   createBy?: string;
-  createTime?: Date | string;
+  // createTime?: Date | string;
   deptId?: number;
   deptName?: string;
   guardId?: number;
@@ -13,7 +13,7 @@ export interface SecurityGuard extends BaseEntity {
   phoneNumber?: string;
   remark?: string;
   updateBy?: string;
-  updateTime?: Date | string;
+  // updateTime?: Date | string;
   wechatId?: string;
   [property: string]: any;
 }
@@ -43,4 +43,45 @@ export interface SecurityGuardQuery extends BaseQuery {
 export interface ImportSecurityGuardParams {
   updateSupport: boolean;
   file: File;
+}
+
+export interface SecurityGuardPageQuery {
+    /**
+     * 部门ID
+     */
+    deptId?: number;
+    /**
+     * 安全员ID
+     */
+    guardId?: number;
+    isAsc?: string;
+    /**
+     * 安全员名称
+     */
+    name?: string;
+    /**
+     * 办公室电话
+     */
+    officePhone?: string;
+    /**
+     * 排序字段
+     */
+    orderByColumn?: string;
+    /**
+     * 当前页数
+     */
+    pageNum?: number;
+    /**
+     * 每页记录数
+     */
+    pageSize?: number;
+    /**
+     * 手机号
+     */
+    phoneNumber?: string;
+    /**
+     * 微信号
+     */
+    wechatId?: string;
+    [property: string]: any;
 }

@@ -23,8 +23,12 @@ import {
   UploadOutlined,
   DownloadOutlined
 } from '@ant-design/icons';
-import { SecurityGuard, SecurityGuardForm, SecurityGuardQuery, PatrolPoint } from '../types';
-import { securityGuardApi, patrolPointApi, API_CONFIG } from '../services';
+import { SecurityGuard, SecurityGuardForm, SecurityGuardQuery, SecurityGuardPageQuery, PatrolPoint, SafetyOfficerQuery, PatrolPointPageQuery, Department } from '../types';
+import { API_CONFIG } from '../services';
+import { securityGuardApi } from '../services/security-guard';
+import { safetyOfficerApi } from '../services/api';
+import { patrolPointApi } from '../services/patrol-point';
+import { departmentApi } from '../services/department';
 import { exportToExcel, readExcelFile } from '../utils/export';
 
 const SafetyOfficerManagement: React.FC = () => {
@@ -37,6 +41,7 @@ const SafetyOfficerManagement: React.FC = () => {
   const [points, setPoints] = useState<PatrolPoint[]>([]);
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
+  const [departments, setDepartments] = useState<Department[]>([]);
 
   // 选择使用的API
   const currentApi = securityGuardApi;
@@ -45,15 +50,18 @@ const SafetyOfficerManagement: React.FC = () => {
   const fetchOfficers = async () => {
     setLoading(true);
     try {
-      const queryParams = {
+      const queryParams: SecurityGuardPageQuery = {
         ...searchQuery,
         pageNum: pagination.current,
         pageSize: pagination.pageSize,
       };
-      
-      const response = await currentApi.getSecurityGuards(queryParams);
-      setOfficers(response.rows || []);
-      
+
+      // const response = await currentApi.getSecurityGuards(queryParams);
+      // 调用接口获取安全员列表
+      const response = await safetyOfficerApi.getSafetyOfficers(queryParams);
+      setOfficers(response.data || []);
+      console.log("queryParams", queryParams);
+      console.log("response", response);
       // 更新分页信息
       setPagination(prev => ({
         ...prev,
@@ -73,9 +81,30 @@ const SafetyOfficerManagement: React.FC = () => {
     try {
       // 注意：这里暂时使用空数组，因为API文档中没有点位列表接口
       // 实际使用时需要根据后端提供的接口调整
-      setPoints([]);
+      const queryParams: PatrolPointPageQuery = {
+        pageNum: 1,
+        pageSize: 3,
+      };
+      const res = await patrolPointApi.getPatrolPoints(queryParams);
+      console.log("getPoints", res);
+      setPoints(res.data);
     } catch (error) {
       console.error('获取点位列表失败:', error);
+    }
+  };
+
+  // 获取部门列表（用于表格分页显示）
+  const fetchDepartments = async () => {
+    try {
+      // 注意：由于API文档中没有分页的部门列表接口，这里使用树形接口
+      const response = await departmentApi.getDepartmentTree();
+      setDepartments(response.data || []);
+      // setDepartments(response.data?.map(dept => ({
+      //   label: dept.deptName!,
+      //   value: dept.deptId!,
+      // })) || []);
+    } catch (error) {
+      message.error('获取部门列表失败');
     }
   };
 
@@ -87,8 +116,17 @@ const SafetyOfficerManagement: React.FC = () => {
     fetchPoints();
   }, []);
 
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+
+
   // 搜索功能
   const handleSearch = (values: SecurityGuardQuery) => {
+    values.phoneNumber = values.phoneNumber || "";
+    values.name = values.name || "";
+    console.log("search", searchQuery);
     setSearchQuery(values);
     setPagination(prev => ({ ...prev, current: 1 })); // 重置到第一页
   };
@@ -111,7 +149,7 @@ const SafetyOfficerManagement: React.FC = () => {
   const handleEdit = (record: SecurityGuard) => {
     setEditingOfficer(record);
     setModalVisible(true);
-    
+
     // 设置表单值
     form.setFieldsValue({
       name: record.name,
@@ -141,6 +179,7 @@ const SafetyOfficerManagement: React.FC = () => {
         await currentApi.updateSecurityGuard({ ...values, guardId: editingOfficer.guardId });
         message.success('更新成功');
       } else {
+        console.log("add", values);
         await currentApi.createSecurityGuard(values);
         message.success('新增成功');
       }
@@ -159,7 +198,7 @@ const SafetyOfficerManagement: React.FC = () => {
         name: searchQuery.name,
         phoneNumber: searchQuery.phoneNumber,
       });
-      
+
       // 创建下载链接
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -169,7 +208,6 @@ const SafetyOfficerManagement: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
       message.success('导出成功');
     } catch (error) {
       message.error('导出失败');
@@ -180,7 +218,7 @@ const SafetyOfficerManagement: React.FC = () => {
   const handleImport = async (file: File) => {
     try {
       const data = await readExcelFile(file);
-      
+
       // 这里应该验证数据格式并批量创建
       console.log('导入的数据:', data);
       message.success(`成功导入 ${data.length} 条记录`);
@@ -363,16 +401,34 @@ const SafetyOfficerManagement: React.FC = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
+              {/* <Form.Item
                 name="dept"
                 label="部门"
                 rules={[{ required: true, message: '请输入部门' }]}
               >
                 <Input placeholder="请输入部门" />
+              </Form.Item> */}
+              <Form.Item
+                name="deptId"
+                label="部门"
+                rules={[{ required: true, message: '请选择部门' }]}
+              >
+                <Select
+                  placeholder="请选择部门"
+                  allowClear
+                  // showSearch
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  options={departments.map(dept => ({
+                    label: dept.deptName,
+                    value: dept.deptId,
+                  }))}
+                />
               </Form.Item>
             </Col>
           </Row>
-          
+
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
@@ -419,14 +475,14 @@ const SafetyOfficerManagement: React.FC = () => {
                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                   }
                   options={points.map(point => ({
-                    label: `${point.pointName || point.name} - ${point.college || point.regionName || ''}`,
-                    value: point.id,
+                    label: `${point.pointCode || point.name} - ${point.detailName || point.college || ''}`,
+                    value: point.pointId,
                   }))}
                 />
               </Form.Item>
             </Col>
           </Row>
-          
+
 
           <Divider />
           <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>

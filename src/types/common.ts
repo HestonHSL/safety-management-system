@@ -4,6 +4,7 @@ export interface ApiResponse<T = any> {
   message?: string;
   msg?: string;
   data?: T;
+  rows?: T;
   total?: number;
   pageNum?: number;
   pageSize?: number;

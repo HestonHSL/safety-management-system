@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu, theme, Dropdown, Avatar, Space, Button, message } from 'antd';
-import { 
-  EnvironmentOutlined, 
-  UserOutlined, 
+import {
+  EnvironmentOutlined,
+  UserOutlined,
   SettingOutlined,
   LogoutOutlined,
   DownOutlined,
@@ -24,9 +24,9 @@ import './App.css';
 const { Header, Sider, Content } = Layout;
 
 // 权限保护组件
-const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: UserRole }> = ({ 
-  children, 
-  requiredRole 
+const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: UserRole }> = ({
+  children,
+  requiredRole
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +35,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: UserR
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
       const userData = localStorage.getItem('user');
-      
+
       if (token && userData) {
         try {
           const user = JSON.parse(userData);
@@ -178,9 +178,9 @@ const AppContent: React.FC = () => {
           zIndex: 1000,
         }}
       >
-        <div className="logo" style={{ 
-          height: 64, 
-          margin: 16, 
+        <div className="logo" style={{
+          height: 64,
+          margin: 16,
           // background: 'rgba(24, 144, 255, 0.1)',
           display: 'flex',
           alignItems: 'center',
@@ -194,7 +194,7 @@ const AppContent: React.FC = () => {
           color: '#1890ff',
           // border: '1px solid #1890ff'
         }}>
-          消防安全责任人<br/>管理系统
+          消防安全责任人<br />管理系统
         </div>
         <Menu
           mode="inline"
@@ -205,8 +205,8 @@ const AppContent: React.FC = () => {
         />
       </Sider>
       <Layout style={{ marginLeft: 200 }}>
-                <Header style={{ 
-          padding: '0 24px', 
+        <Header style={{
+          padding: '0 24px',
           background: colorBgContainer,
           display: 'flex',
           alignItems: 'center',
@@ -219,7 +219,7 @@ const AppContent: React.FC = () => {
         }}>
           {user && <UserMenu user={user} onLogout={handleLogout} />}
         </Header>
-        <Content style={{ 
+        <Content style={{
           margin: 0,
           overflow: 'initial',
           padding: 24,
@@ -238,13 +238,13 @@ const AppContent: React.FC = () => {
               <Route path="/regions" element={<RegionManagement />} />
               <Route path="/points" element={<PointManagement />} />
               <Route path="/officers" element={<SafetyOfficerManagement />} />
-              <Route 
-                path="/users" 
+              <Route
+                path="/users"
                 element={
-                  user?.role === UserRole.SUPER_ADMIN ? 
-                    <UserManagement /> : 
+                  user?.role === UserRole.SUPER_ADMIN ?
+                    <UserManagement /> :
                     <Navigate to="/regions" replace />
-                } 
+                }
               />
               {/* 调试工具路由 - 仅在开发环境下可用 */}
               {(import.meta.env.DEV || import.meta.env.VITE_SHOW_DEBUG === 'true') && (
@@ -267,13 +267,13 @@ const App: React.FC = () => {
         {/* H5页面路由，独立布局 */}
         <Route path="/h5/point/:id" element={<PointDetailH5 />} />
         {/* 管理端页面路由，使用AppContent布局和权限保护 */}
-        <Route 
-          path="/*" 
+        <Route
+          path="/*"
           element={
             <ProtectedRoute>
               <AppContent />
             </ProtectedRoute>
-          } 
+          }
         />
       </Routes>
     </Router>

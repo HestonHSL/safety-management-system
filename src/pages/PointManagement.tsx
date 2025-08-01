@@ -25,8 +25,9 @@ import {
   UploadOutlined,
   EyeOutlined
 } from '@ant-design/icons';
-import { PatrolPoint, PatrolPointForm, PatrolPointQuery } from '../types';
-import { patrolPointApi, departmentApi } from '../services';
+import { Department, PatrolPoint, PatrolPointForm, PatrolPointPageQuery, PatrolPointQuery } from '../types';
+import { departmentApi } from '../services/department';
+import { patrolPointApi } from '../services/patrol-point';
 import { generateQRCode, generateLabelImage, downloadQRCode, downloadLabelImage } from '../utils/qrcode';
 import { exportToExcel, readExcelFile } from '../utils/export';
 
@@ -39,23 +40,24 @@ const PointManagement: React.FC = () => {
   const [selectedPoint, setSelectedPoint] = useState<PatrolPoint | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<PatrolPointQuery>({});
-  const [departments, setDepartments] = useState<{ label: string; value: number }[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
-  
+
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
+  const [options, setOptions] = useState({});
 
   // 获取点位列表
   const fetchPoints = async () => {
     setLoading(true);
     try {
-      const queryParams = {
+      const queryParams: PatrolPointPageQuery = {
         ...searchQuery,
         pageNum: pagination.current,
         pageSize: pagination.pageSize,
       };
       const response = await patrolPointApi.getPatrolPoints(queryParams);
-      setPoints(response.rows || []);
+      setPoints(response.data || []);
       setPagination(prev => ({
         ...prev,
         total: response.total || 0,
@@ -68,15 +70,30 @@ const PointManagement: React.FC = () => {
   };
 
   // 获取部门列表
+  // const fetchDepartments = async () => {
+  //   try {
+  //     const response = await departmentApi.getDepartments({});
+  //     setDepartments(response.rows?.map(dept => ({
+  //       label: dept.deptName,
+  //       value: dept.deptId,
+  //     })) || []);
+  //   } catch (error) {
+  //     console.error('获取部门列表失败:', error);
+  //   }
+  // };
+
+  // 获取部门列表（用于表格分页显示）
   const fetchDepartments = async () => {
     try {
-      const response = await departmentApi.getDepartments({});
-      setDepartments(response.rows?.map(dept => ({
-        label: dept.deptName,
-        value: dept.deptId,
-      })) || []);
+      // 注意：由于API文档中没有分页的部门列表接口，这里使用树形接口
+      const response = await departmentApi.getDepartmentTree();
+      setDepartments(response.data || []);
+      // setDepartments(response.data?.map(dept => ({
+      //   label: dept.deptName!,
+      //   value: dept.deptId!,
+      // })) || []);
     } catch (error) {
-      console.error('获取部门列表失败:', error);
+      message.error('获取部门列表失败');
     }
   };
 
@@ -87,6 +104,11 @@ const PointManagement: React.FC = () => {
 
   // 搜索功能
   const handleSearch = (values: PatrolPointQuery) => {
+    values.pointCode = values.pointCode || "";
+    values.pointId = values.pointId || "";
+    values.pointName = values.pointName || "";
+    values.deptId = values.deptId || "";
+    console.log("search666", values);
     setSearchQuery(values);
     setPagination(prev => ({ ...prev, current: 1 }));
   };
@@ -95,6 +117,7 @@ const PointManagement: React.FC = () => {
   const handleReset = () => {
     searchForm.resetFields();
     setSearchQuery({});
+    setPagination(prev => ({ ...prev, current: 1 })); // 重置到第一页
   };
 
   // 新增点位
@@ -102,22 +125,51 @@ const PointManagement: React.FC = () => {
     setEditingPoint(null);
     setModalVisible(true);
     form.resetFields();
+    form.setFieldsValue({
+      // pointId: "",
+      // pointCode: "",
+      // deptId: "",
+      building: "",
+      floor: "",
+      roomNumber: "",
+      detailName: "",
+      purpose: "",
+      remark: "",
+    });
   };
+
+  // const handleAdd = () => {
+  //   setEditingPoint(null);
+  //   setModalVisible(true);
+  //   form.resetFields();
+  // };
 
   // 编辑点位
   const handleEdit = (record: PatrolPoint) => {
     setEditingPoint(record);
     setModalVisible(true);
+    // form.setFieldsValue({
+    //   ...record,
+    //   deptId: record.deptId,
+    // });
     form.setFieldsValue({
-      ...record,
+      pointId: record.pointId,
+      pointCode: record.pointCode,
       deptId: record.deptId,
+      building: record.building,
+      floor: record.floor,
+      roomNumber: record.roomNumber,
+      detailName: record.detailName,
+      purpose: record.purpose,
+      remark: record.remark,
     });
   };
 
   // 删除点位
   const handleDelete = async (pointId: number) => {
     try {
-      await patrolPointApi.deletePatrolPoints([pointId]);
+      const pointIds = pointId.toString();
+      await patrolPointApi.deletePatrolPoints(pointIds);
       message.success('删除成功');
       fetchPoints();
     } catch (error) {
@@ -129,9 +181,10 @@ const PointManagement: React.FC = () => {
   const handleSubmit = async (values: PatrolPointForm) => {
     try {
       if (editingPoint) {
-        await patrolPointApi.updatePatrolPoint(editingPoint.pointId, values);
+        await patrolPointApi.updatePatrolPoint(editingPoint.pointId!, values);
         message.success('更新成功');
       } else {
+        console.log("add", values);
         await patrolPointApi.createPatrolPoint(values);
         message.success('新增成功');
       }
@@ -146,7 +199,7 @@ const PointManagement: React.FC = () => {
   const handlePreviewQR = async (record: PatrolPoint) => {
     try {
       setSelectedPoint(record);
-      
+
       // 生成H5页面链接（这里使用模拟链接）
       const h5Url = `${window.location.origin}/h5/point/${record.id}`;
       const labelImage = await generateLabelImage(h5Url);
@@ -198,7 +251,7 @@ const PointManagement: React.FC = () => {
       const officer = options.safetyOfficers.find(o => o.value === (point.guardId || point.safetyOfficerId));
       return {
         点位编码: point.pointId || point.code || point.id,
-        点位名称: point.pointName || point.name || '',
+        // 点位名称: point.pointName || point.name || '',
         学院: point.college || '',
         楼栋: point.building || '',
         楼层: point.floor || '',
@@ -211,9 +264,9 @@ const PointManagement: React.FC = () => {
         创建时间: point.createTime || ''
       };
     });
-    
+
     exportToExcel(exportData, '点位信息', [
-      '点位编码', '点位名称', '学院', '楼栋', '楼层', '所属区域', '房间号', '详细名称', '用途', '负责安全员', '描述', '创建时间'
+      '点位编码', '学院', '楼栋', '楼层', '所属区域', '房间号', '详细名称', '用途', '负责安全员', '描述', '创建时间'
     ]);
     message.success('导出成功');
   };
@@ -222,7 +275,7 @@ const PointManagement: React.FC = () => {
   const handleImport = async (file: File) => {
     try {
       const data = await readExcelFile(file);
-      
+
       console.log('导入的数据:', data);
       message.success(`成功导入 ${data.length} 条记录`);
       fetchPoints();
@@ -242,19 +295,19 @@ const PointManagement: React.FC = () => {
     },
     {
       title: '点位编码',
-      dataIndex: 'pointId',
-      key: 'pointId',
+      dataIndex: 'pointCode',
+      key: 'pointCode',
       width: 120,
       render: (text: string, record: PatrolPoint) => {
-        return record.pointId;
+        return record.pointCode;
       },
     },
-    {
-      title: '点位名称',
-      dataIndex: 'pointName',
-      key: 'pointName',
-      width: 150,
-    },
+    // {
+    //   title: '点位名称',
+    //   dataIndex: 'pointName',
+    //   key: 'pointName',
+    //   width: 150,
+    // },
     {
       title: '所属部门',
       dataIndex: 'deptName',
@@ -275,8 +328,8 @@ const PointManagement: React.FC = () => {
     },
     {
       title: '详细名称',
-      dataIndex: 'location',
-      key: 'location',
+      dataIndex: 'detailName',
+      key: 'detailName',
       width: 200,
     },
     {
@@ -344,10 +397,10 @@ const PointManagement: React.FC = () => {
           onFinish={handleSearch}
           style={{ marginBottom: 20 }}
         >
-          <Form.Item name="pointName" label="点位名称">
+          {/* <Form.Item name="pointName" label="点位名称">
             <Input placeholder="请输入点位名称" allowClear />
-          </Form.Item>
-          <Form.Item name="pointId" label="点位编码">
+          </Form.Item> */}
+          <Form.Item name="pointCode" label="点位编码">
             <Input placeholder="请输入点位编码" allowClear />
           </Form.Item>
           <Form.Item name="deptId" label="所属部门">
@@ -355,7 +408,11 @@ const PointManagement: React.FC = () => {
               placeholder="请选择部门"
               allowClear
               style={{ width: 180 }}
-              options={departments}
+              // options={departments}
+              options={departments.map(dept => ({
+                label: dept.deptName,
+                value: dept.deptId,
+              }))}
             />
           </Form.Item>
           <Form.Item>
@@ -403,9 +460,15 @@ const PointManagement: React.FC = () => {
           rowKey="id"
           loading={loading}
           pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total) => `共 ${total} 条记录`,
+            onChange: (page, pageSize) => {
+              setPagination(prev => ({ ...prev, current: page, pageSize: pageSize || 10 }));
+            },
           }}
           scroll={{ x: 1400 }}
         />
@@ -420,7 +483,7 @@ const PointManagement: React.FC = () => {
         destroyOnClose
         width={700}
       >
-        <Form
+        {/* <Form
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
@@ -441,8 +504,8 @@ const PointManagement: React.FC = () => {
                 label="点位编码"
                 rules={editingPoint ? [] : []}
               >
-                <Input 
-                  placeholder={editingPoint ? "点位编码（后端自动生成）" : "点位编码（后端自动生成）"} 
+                <Input
+                  placeholder={editingPoint ? "点位编码（后端自动生成）" : "点位编码（后端自动生成）"}
                   disabled={!editingPoint}
                 />
               </Form.Item>
@@ -528,6 +591,116 @@ const PointManagement: React.FC = () => {
               </Button>
             </Space>
           </Form.Item>
+        </Form> */}
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="pointCode"
+                label="点位编码"
+                rules={[{ required: true, message: '请输入点位编码' }]}
+              >
+                <Input placeholder="请输入点位编码" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="deptId"
+                label="所属部门"
+                rules={[{ required: true, message: '请选择所属部门' }]}
+              >
+                <Select
+                  placeholder="请选择部门"
+                  allowClear
+                  // showSearch
+                  // options={departments}
+                  options={departments.map(dept => ({
+                    label: dept.deptName,
+                    value: dept.deptId,
+                  }))}
+                />
+              </Form.Item>
+              {/* <Form.Item name="deptId" label="所属部门">
+                <Select
+                  placeholder="请选择部门"
+                  allowClear
+                  style={{ width: 180 }}
+                  // options={departments}
+                  options={departments.map(dept => ({
+                    label: dept.deptName,
+                    value: dept.deptId,
+                  }))}
+                />
+              </Form.Item> */}
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="building"
+                label="楼栋"
+              >
+                <Input placeholder="请输入楼栋（可选）" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="floor"
+                label="楼层"
+              >
+                <Input placeholder="请输入楼层（可选）" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="roomNumber"
+                label="房间号"
+              >
+                <Input placeholder="请输入房间号（可选）" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="detailName"
+                label="详细名称"
+              >
+                <Input placeholder="请输入详细名称（可选）" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="purpose"
+                label="用途"
+              >
+                <Input placeholder="请输入用途（可选）" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="remark"
+                label="备注"
+              >
+                <Input placeholder="请输入备注（可选）" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Divider />
+          <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
+            <Space size="small">
+              <Button onClick={() => setModalVisible(false)}>取消</Button>
+              <Button type="primary" htmlType="submit">
+                {editingPoint ? '更新' : '新增'}
+              </Button>
+            </Space>
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -556,13 +729,13 @@ const PointManagement: React.FC = () => {
                 {selectedPoint.college || selectedPoint.regionName} - {selectedPoint.building} - {selectedPoint.floor}楼
               </p>
             </div>
-            
+
             {qrCodeUrl && (
               <div style={{ margin: '20px 0' }}>
                 <Image
                   src={qrCodeUrl}
                   alt="安全员信息码标签"
-                  style={{ 
+                  style={{
                     maxWidth: '300px',
                     border: '1px solid #e8e8e8',
                     borderRadius: '8px',
@@ -571,7 +744,7 @@ const PointManagement: React.FC = () => {
                 />
               </div>
             )}
-            
+
             {/* <Divider />
             
             <div style={{ 
@@ -596,32 +769,32 @@ const PointManagement: React.FC = () => {
                 <p style={{ margin: '4px 0' }}>• 建议使用不干胶标签纸打印</p>
               </div>
             </div> */}
-            
-                         <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '6px', marginTop: '16px' }}>
-               <h5 style={{ margin: '0 0 8px 0', color: '#1890ff' }}>🔗 H5页面预览</h5>
-               <p style={{ 
-                 fontSize: '14px', 
-                 color: '#333',
-                 wordBreak: 'break-all',
-                 background: '#fff',
-                 padding: '8px 12px',
-                 border: '1px solid #d9d9d9',
-                 borderRadius: '4px',
-                 margin: '8px 0'
-               }}>
-                 <a 
-                   href={`${window.location.origin}/h5/point/${selectedPoint.id}`} 
-                   target="_blank" 
-                   rel="noopener noreferrer"
-                   style={{ color: '#1890ff', textDecoration: 'none' }}
-                 >
-                   {`${window.location.origin}/h5/point/${selectedPoint.id}`}
-                 </a>
-               </p>
-               <p style={{ fontSize: '12px', color: '#666', margin: '8px 0 0 0' }}>
-                 💡 点击上方链接可预览扫码后的H5页面效果，或扫描标签上的二维码查看点位详细信息
-               </p>
-             </div>
+
+            <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '6px', marginTop: '16px' }}>
+              <h5 style={{ margin: '0 0 8px 0', color: '#1890ff' }}>🔗 H5页面预览</h5>
+              <p style={{
+                fontSize: '14px',
+                color: '#333',
+                wordBreak: 'break-all',
+                background: '#fff',
+                padding: '8px 12px',
+                border: '1px solid #d9d9d9',
+                borderRadius: '4px',
+                margin: '8px 0'
+              }}>
+                <a
+                  href={`${window.location.origin}/h5/point/${selectedPoint.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#1890ff', textDecoration: 'none' }}
+                >
+                  {`${window.location.origin}/h5/point/${selectedPoint.id}`}
+                </a>
+              </p>
+              <p style={{ fontSize: '12px', color: '#666', margin: '8px 0 0 0' }}>
+                💡 点击上方链接可预览扫码后的H5页面效果，或扫描标签上的二维码查看点位详细信息
+              </p>
+            </div>
           </div>
         )}
       </Modal>
