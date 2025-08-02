@@ -1,8 +1,32 @@
 import { httpClient } from './httpClient';
-import { PatrolPoint, PatrolPointQuery, BatchDownloadQrCodeParams } from '../types/patrol-point';
+import { PatrolPoint, PatrolPointQuery, BatchDownloadQrCodeParams, PatrolPointPageQuery, PatrolPointForm } from '../types/patrol-point';
 
 // 巡查点位管理API - 根据API文档
 export const patrolPointApi = {
+
+  //分页查询
+  getPatrolPoints: async (params: PatrolPointPageQuery): Promise<{
+    total: number,
+    data: PatrolPoint[]
+  }> => {
+    const response = await httpClient.get<PatrolPoint>(`/campus/point/list`, params);
+    return { total: response.total!, data: response.rows as PatrolPoint[] };
+  },
+
+  createPatrolPoint: async (params: PatrolPointForm): Promise<void> => {
+    const response = await httpClient.post(`/campus/point`, params);
+    
+  },
+
+  updatePatrolPoint: async (pointId: number, params: PatrolPointForm): Promise<void> => {
+    const response = await httpClient.put(`/campus/point`, { ...params, pointId });
+    
+  },
+
+  deletePatrolPoints: async (pointIds: string): Promise<void> => {
+    const response = await httpClient.delete(`/campus/point/${pointIds}`);
+  },
+
   // 查询巡查点位信息 - GET /campus/point/{pointId}
   getPatrolPointById: async (pointId: number): Promise<PatrolPoint> => {
     const response = await httpClient.get<PatrolPoint>(`/campus/point/${pointId}`);

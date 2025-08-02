@@ -5,7 +5,7 @@ export interface PatrolPoint extends BaseEntity {
     bindTime?: Date | string;
     building?: string;
     createBy?: string;
-    createTime?: Date | string;
+    // createTime?: Date | string;
     deptId?: number;
     deptName?: string;
     detailName?: string;
@@ -23,7 +23,60 @@ export interface PatrolPoint extends BaseEntity {
     remark?: string;
     roomNumber?: string;
     updateBy?: string;
-    updateTime?: Date | string;
+    // updateTime?: Date | string;
+    [property: string]: any;
+}
+
+export interface PatrolPointPageQuery {
+    /**
+     * 楼栋
+     */
+    building?: string;
+    /**
+     * 部门ID
+     */
+    deptId?: number;
+    /**
+     * 详细名称
+     */
+    detailName?: string;
+    /**
+     * 楼层
+     */
+    floor?: string;
+    /**
+     * 安全员ID
+     */
+    guardId?: number;
+    isAsc?: string;
+    /**
+     * 排序字段
+     */
+    orderByColumn?: string;
+    /**
+     * 当前页数
+     */
+    pageNum?: number;
+    /**
+     * 每页数量
+     */
+    pageSize?: number;
+    /**
+     * 点位编码
+     */
+    pointCode?: string;
+    /**
+     * 点位ID
+     */
+    pointId?: number;
+    /**
+     * 用途
+     */
+    purpose?: string;
+    /**
+     * 房间号
+     */
+    roomNumber?: string;
     [property: string]: any;
 }
 
@@ -42,7 +95,7 @@ export interface PatrolPointForm {
 
 // 巡查点位查询参数类型
 export interface PatrolPointQuery extends BaseQuery {
-    pointId?: number;
+    pointId?: string;
     pointCode?: string;
     deptId?: number;
     building?: string;
@@ -51,6 +104,7 @@ export interface PatrolPointQuery extends BaseQuery {
     detailName?: string;
     purpose?: string;
     guardId?: number;
+    pointName?: string;
 }
 
 // 批量下载二维码参数
