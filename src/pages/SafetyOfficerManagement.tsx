@@ -43,6 +43,7 @@ const SafetyOfficerManagement: React.FC = () => {
   const [searchForm] = Form.useForm();
   const [departments, setDepartments] = useState<Department[]>([]);
 
+  const [pointsMap, setPointsMap] = useState<Map<number, PatrolPoint[]>>(new Map());
   // 选择使用的API
   const currentApi = securityGuardApi;
 
@@ -60,8 +61,8 @@ const SafetyOfficerManagement: React.FC = () => {
       // 调用接口获取安全员列表
       const response = await safetyOfficerApi.getSafetyOfficers(queryParams);
       setOfficers(response.data || []);
-      console.log("queryParams", queryParams);
-      console.log("response", response);
+      // console.log("queryParams", queryParams);
+      // console.log("response", response);
       // 更新分页信息
       setPagination(prev => ({
         ...prev,
@@ -69,12 +70,25 @@ const SafetyOfficerManagement: React.FC = () => {
         current: queryParams.pageNum || 1,
         pageSize: queryParams.pageSize || 10,
       }));
+
+      const newMap = new Map<number, PatrolPoint[]>();
+      for (let securityGuard of response.data) {
+        const res = await securityGuardApi.getPatrolPointsByGuardId(securityGuard.guardId!);
+        newMap.set(securityGuard.guardId!, res.data);
+      }
+
+      setPointsMap(newMap);
     } catch (error) {
       message.error('获取安全员列表失败');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    console.log("pointsMap", pointsMap);
+    // console.log(pointsMap.get(1)?[1].deptName);
+  }, [pointsMap]);
 
   // 获取点位列表
   const fetchPoints = async () => {
@@ -83,7 +97,7 @@ const SafetyOfficerManagement: React.FC = () => {
       // 实际使用时需要根据后端提供的接口调整
       const queryParams: PatrolPointPageQuery = {
         pageNum: 1,
-        pageSize: 3,
+        pageSize: 1000000,
       };
       const res = await patrolPointApi.getPatrolPoints(queryParams);
       console.log("getPoints", res);
@@ -199,6 +213,8 @@ const SafetyOfficerManagement: React.FC = () => {
         phoneNumber: searchQuery.phoneNumber,
       });
 
+      console.log("blob", blob);
+
       // 创建下载链接
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -265,6 +281,43 @@ const SafetyOfficerManagement: React.FC = () => {
       dataIndex: 'wechatId',
       key: 'wechatId',
       render: (text: string) => text || '-',
+    },
+    {
+      title: '点位', // 新增点位列
+      key: 'points',
+      width: 180,
+      render: (_: any, record: SecurityGuard) => {
+        const points = pointsMap.get(record.guardId!) || [];
+        return (
+          <Select
+            // mode="multiple"
+            placeholder="查看点位信息"
+            style={{ width: 180 }}
+            // disabled
+            // defaultValue={points.length > 0 ? points[0].pointId : ""} // 默认值为第一个点位
+            options={points.map(point => ({
+              label: point.building || '未知楼栋',
+              // value: point.pointId,
+            }))}
+          />
+          // <Select
+          //   placeholder="请选择部门"
+          //   allowClear
+          //   style={{ width: 180 }}
+          //   // options={departments}
+          //   options={departments.map(dept => ({
+          //     label: dept.deptName,
+          //     value: dept.deptId,
+          //   }))}
+          // />
+        );
+      },
+    },
+    {
+      title: '备注', // 新增备注列
+      dataIndex: 'remark',
+      key: 'remark',
+      render: (text: string) => text || '暂无',
     },
     {
       title: '创建时间',
@@ -463,6 +516,14 @@ const SafetyOfficerManagement: React.FC = () => {
             </Col>
             <Col span={12}>
               <Form.Item
+                name="remark"
+                label="备注"
+              >
+                <Input placeholder="请输入备注（可选）" />
+              </Form.Item>
+            </Col>
+            {/* <Col span={12}>
+              <Form.Item
                 name="pointIds"
                 label="负责点位"
               >
@@ -480,7 +541,7 @@ const SafetyOfficerManagement: React.FC = () => {
                   }))}
                 />
               </Form.Item>
-            </Col>
+            </Col> */}
           </Row>
 
 
