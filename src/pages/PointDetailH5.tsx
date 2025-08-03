@@ -23,14 +23,17 @@ const PointDetailH5: React.FC = () => {
       
       try {
         setLoading(true);
-        const pointsResponse = await pointApi.getPoints();
-        const currentPoint = pointsResponse.data.find(p => p.id === id);
+        // const pointsResponse = await pointApi.getPoints();
+        // const currentPoint = pointsResponse.data.find(p => p.id === id);
+        const pointsResponse = undefined;
+        const currentPoint = undefined;
         
         if (currentPoint) {
           setPoint(currentPoint);
           
           const officersResponse = await safetyOfficerApi.getSafetyOfficers();
-          const currentOfficer = officersResponse.data.find(o => o.id === currentPoint.safetyOfficerId);
+          // const currentOfficer = officersResponse.data.find(o => o.id === currentPoint.safetyOfficerId);
+          const currentOfficer = undefined;
           setOfficer(currentOfficer || null);
         }
       } catch (error) {

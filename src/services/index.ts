@@ -19,11 +19,17 @@ console.log(USE_REAL_API);
 console.log(`[API] 当前使用 ${USE_REAL_API ? '真实' : '模拟'} API`);
 
 // 根据配置选择API实现 - 只导出API文档中存在的接口
-export const authApi = USE_REAL_API ? realAuthApi : mockApi.authApi;
-export const departmentApi = USE_REAL_API ? realDepartmentApi : mockApi.departmentApi;
-export const securityGuardApi = USE_REAL_API ? realSecurityGuardApi : mockApi.safetyOfficerApi;
-export const patrolPointApi = USE_REAL_API ? realPatrolPointApi : mockApi.pointApi;
-export const fileApi = USE_REAL_API ? realFileApi : mockApi.downloadApi;
+// export const authApi = USE_REAL_API ? realAuthApi : mockApi.authApi;
+// export const departmentApi = USE_REAL_API ? realDepartmentApi : mockApi.departmentApi;
+// export const securityGuardApi = USE_REAL_API ? realSecurityGuardApi : mockApi.safetyOfficerApi;
+// export const patrolPointApi = USE_REAL_API ? realPatrolPointApi : mockApi.pointApi;
+// export const fileApi = USE_REAL_API ? realFileApi : mockApi.downloadApi;
+
+export const authApi = realAuthApi;
+export const departmentApi = realDepartmentApi;
+export const securityGuardApi = realSecurityGuardApi;
+export const patrolPointApi = realPatrolPointApi;
+export const fileApi = realFileApi;
 
 // 兼容性别名
 export const regionApi = departmentApi; // 区域管理使用部门接口

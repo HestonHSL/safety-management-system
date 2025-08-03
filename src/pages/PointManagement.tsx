@@ -168,7 +168,7 @@ const PointManagement: React.FC = () => {
     values.pointId = values.pointId || "";
     values.pointName = values.pointName || "";
     values.deptId = values.deptId || "";
-    console.log("search666", values);
+    // console.log("search666", values);
     setSearchQuery(values);
     setPagination(prev => ({ ...prev, current: 1 }));
   };
@@ -309,7 +309,7 @@ const PointManagement: React.FC = () => {
   // 导出数据
   const handleExport = () => {
     const exportData = points.map(point => {
-      const officer = options.safetyOfficers.find(o => o.value === (point.guardId || point.safetyOfficerId));
+      // const officer = options.safetyOfficers.find(o => o.value === (point.guardId || point.safetyOfficerId));
       return {
         点位编码: point.pointId || point.code || point.id,
         // 点位名称: point.pointName || point.name || '',
@@ -320,7 +320,7 @@ const PointManagement: React.FC = () => {
         房间号: point.roomNumber || '',
         详细名称: point.location || '',
         用途: point.purpose || '',
-        负责安全员: officer ? officer.label : (point.safetyOfficerName || ''),
+        // 负责安全员: officer ? officer.label : (point.safetyOfficerName || ''),
         描述: point.description || '',
         创建时间: point.createTime || ''
       };
