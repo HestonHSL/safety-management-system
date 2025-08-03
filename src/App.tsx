@@ -13,7 +13,7 @@ import {
 import RegionManagement from './pages/RegionManagement';
 import PointManagement from './pages/PointManagement';
 import SafetyOfficerManagement from './pages/SafetyOfficerManagement';
-import UserManagement from './pages/UserManagement';
+// import UserManagement from './pages/UserManagement';
 import PointDetailH5 from './pages/PointDetailH5';
 import Login from './pages/Login';
 import ApiDebugger from './components/ApiDebugger';
@@ -240,11 +240,11 @@ const AppContent: React.FC = () => {
               <Route path="/officers" element={<SafetyOfficerManagement />} />
               <Route
                 path="/users"
-                element={
-                  user?.role === UserRole.SUPER_ADMIN ?
-                    <UserManagement /> :
-                    <Navigate to="/regions" replace />
-                }
+                // element={
+                //   user?.role === UserRole.SUPER_ADMIN ?
+                //     <UserManagement /> :
+                //     <Navigate to="/regions" replace />
+                // }
               />
               {/* 调试工具路由 - 仅在开发环境下可用 */}
               {(import.meta.env.DEV || import.meta.env.VITE_SHOW_DEBUG === 'true') && (

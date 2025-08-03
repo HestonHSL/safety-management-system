@@ -68,7 +68,7 @@ export interface PatrolPointPageQuery {
     /**
      * 点位ID
      */
-    pointId?: number;
+    pointId?: string;
     /**
      * 用途
      */
@@ -97,7 +97,7 @@ export interface PatrolPointForm {
 export interface PatrolPointQuery extends BaseQuery {
     pointId?: string;
     pointCode?: string;
-    deptId?: number;
+    deptId?: any;
     building?: string;
     floor?: string;
     roomNumber?: string;

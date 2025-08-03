@@ -168,7 +168,7 @@ const PointManagement: React.FC = () => {
     values.pointId = values.pointId || "";
     values.pointName = values.pointName || "";
     values.deptId = values.deptId || "";
-    console.log("search666", values);
+    // console.log("search666", values);
     setSearchQuery(values);
     setPagination(prev => ({ ...prev, current: 1 }));
   };
@@ -309,7 +309,7 @@ const PointManagement: React.FC = () => {
   // 导出数据
   const handleExport = () => {
     const exportData = points.map(point => {
-      const officer = options.safetyOfficers.find(o => o.value === (point.guardId || point.safetyOfficerId));
+      // const officer = options.safetyOfficers.find(o => o.value === (point.guardId || point.safetyOfficerId));
       return {
         点位编码: point.pointId || point.code || point.id,
         // 点位名称: point.pointName || point.name || '',
@@ -320,7 +320,7 @@ const PointManagement: React.FC = () => {
         房间号: point.roomNumber || '',
         详细名称: point.location || '',
         用途: point.purpose || '',
-        负责安全员: officer ? officer.label : (point.safetyOfficerName || ''),
+        // 负责安全员: officer ? officer.label : (point.safetyOfficerName || ''),
         描述: point.description || '',
         创建时间: point.createTime || ''
       };
@@ -924,10 +924,10 @@ const PointManagement: React.FC = () => {
           <div className="qr-code-preview" style={{ textAlign: 'center' }}>
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#1890ff' }}>
-                {selectedPoint.pointName || selectedPoint.name}
+                {selectedPoint.pointCode || selectedPoint.guardName}
               </h4>
               <p style={{ margin: '0', color: '#666', fontSize: '14px' }}>
-                {selectedPoint.college || selectedPoint.regionName} - {selectedPoint.building} - {selectedPoint.floor}楼
+                {selectedPoint.college || selectedPoint.deptName} - {selectedPoint.building} - {selectedPoint.floor}楼
               </p>
             </div>
 
@@ -984,12 +984,12 @@ const PointManagement: React.FC = () => {
                 margin: '8px 0'
               }}>
                 <a
-                  href={`${window.location.origin}/h5/point/${selectedPoint.id}`}
+                  href={`${window.location.origin}/h5/point/${selectedPoint.pointId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: '#1890ff', textDecoration: 'none' }}
                 >
-                  {`${window.location.origin}/h5/point/${selectedPoint.id}`}
+                  {`${window.location.origin}/h5/point/${selectedPoint.pointId}`}
                 </a>
               </p>
               <p style={{ fontSize: '12px', color: '#666', margin: '8px 0 0 0' }}>
