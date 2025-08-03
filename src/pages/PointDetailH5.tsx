@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button, message, Spin } from 'antd';
-import { 
-  EnvironmentOutlined, 
-  UserOutlined, 
+import {
+  EnvironmentOutlined,
+  UserOutlined,
   MobileOutlined,
   CopyOutlined
 } from '@ant-design/icons';
 import { Point, SafetyOfficer } from '../types';
-import { pointApi, safetyOfficerApi } from '../services/api';
+// import { pointApi, safetyOfficerApi } from '../services/api';
+import { patrolPointApi } from '../services/patrol-point';
+import { securityGuardApi } from '../services/security-guard';
 import './PointDetailH5.css';
 
 const PointDetailH5: React.FC = () => {
@@ -20,20 +22,19 @@ const PointDetailH5: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
         // const pointsResponse = await pointApi.getPoints();
         // const currentPoint = pointsResponse.data.find(p => p.id === id);
-        const pointsResponse = undefined;
-        const currentPoint = undefined;
-        
+        const currentPoint = await patrolPointApi.getPatrolPointById(Number(id));
+        console.log("point", currentPoint);
         if (currentPoint) {
           setPoint(currentPoint);
-          
-          const officersResponse = await safetyOfficerApi.getSafetyOfficers();
+          // const officersResponse = await safetyOfficerApi.getSafetyOfficers();
           // const currentOfficer = officersResponse.data.find(o => o.id === currentPoint.safetyOfficerId);
-          const currentOfficer = undefined;
+          const currentOfficer = await securityGuardApi.getSecurityGuardById(currentPoint.guardId!);
+          console.log("officer", currentOfficer);
           setOfficer(currentOfficer || null);
         }
       } catch (error) {
@@ -99,15 +100,19 @@ const PointDetailH5: React.FC = () => {
             <EnvironmentOutlined className="section-icon" />
             <span>点位信息</span>
           </div>
-          
+
           <div className="info-grid">
             <div className="info-item">
               <span className="label">点位编号</span>
-              <span className="value">{point.code}</span>
+              <span className="value">{point.pointCode}</span>
             </div>
             <div className="info-item">
               <span className="label">所属学院/部门</span>
-              <span className="value">{point.regionName}</span>
+              <span className="value">{point.deptName}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">楼栋</span>
+              <span className="value">{point.building}</span>
             </div>
             <div className="info-item">
               <span className="label">楼层</span>
@@ -119,7 +124,7 @@ const PointDetailH5: React.FC = () => {
             </div>
             <div className="info-item">
               <span className="label">详细名称</span>
-              <span className="value">{point.location}</span>
+              <span className="value">{point.detailName}</span>
             </div>
             <div className="info-item">
               <span className="label">用途</span>
@@ -149,8 +154,8 @@ const PointDetailH5: React.FC = () => {
                     <MobileOutlined className="contact-icon" />
                     <span>{officer.phoneNumber || officer.mobile}</span>
                   </div>
-                  <Button 
-                    type="text" 
+                  <Button
+                    type="text"
                     icon={<CopyOutlined />}
                     onClick={() => {
                       const phone = officer.phoneNumber || officer.mobile;
@@ -165,7 +170,7 @@ const PointDetailH5: React.FC = () => {
               <div className="contact-item">
                 <div className="contact-info">
                   <span className="contact-icon">📧</span>
-                  <span>部门：{officer.dept || officer.department}</span>
+                  <span>部门：{officer.deptName || officer.department}</span>
                 </div>
               </div>
             </div>

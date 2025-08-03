@@ -924,10 +924,10 @@ const PointManagement: React.FC = () => {
           <div className="qr-code-preview" style={{ textAlign: 'center' }}>
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#1890ff' }}>
-                {selectedPoint.pointName || selectedPoint.name}
+                {selectedPoint.pointCode || selectedPoint.guardName}
               </h4>
               <p style={{ margin: '0', color: '#666', fontSize: '14px' }}>
-                {selectedPoint.college || selectedPoint.regionName} - {selectedPoint.building} - {selectedPoint.floor}楼
+                {selectedPoint.college || selectedPoint.deptName} - {selectedPoint.building} - {selectedPoint.floor}楼
               </p>
             </div>
 
@@ -984,12 +984,12 @@ const PointManagement: React.FC = () => {
                 margin: '8px 0'
               }}>
                 <a
-                  href={`${window.location.origin}/h5/point/${selectedPoint.id}`}
+                  href={`${window.location.origin}/h5/point/${selectedPoint.pointId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: '#1890ff', textDecoration: 'none' }}
                 >
-                  {`${window.location.origin}/h5/point/${selectedPoint.id}`}
+                  {`${window.location.origin}/h5/point/${selectedPoint.pointId}`}
                 </a>
               </p>
               <p style={{ fontSize: '12px', color: '#666', margin: '8px 0 0 0' }}>
