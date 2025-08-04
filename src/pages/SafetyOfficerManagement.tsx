@@ -335,6 +335,7 @@ const SafetyOfficerManagement: React.FC = () => {
       title: '操作',
       key: 'action',
       width: 200,
+      fixed: 'right' as const,
       render: (_: any, record: SecurityGuard) => (
         <Space size={4}>
           <Button

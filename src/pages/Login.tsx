@@ -89,20 +89,6 @@ const Login: React.FC = () => {
               </Button>
             </Form.Item>
           </Form>
-
-          <div className="login-demo">
-            <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-              演示账号：
-            </Text>
-            <Space direction="vertical" size={4}>
-              <Text code style={{ fontSize: '12px' }}>
-                超级管理员：superadmin / admin123
-              </Text>
-              <Text code style={{ fontSize: '12px' }}>
-                管理员：admin001 / admin123
-              </Text>
-            </Space>
-          </div>
         </Card>
       </div>
     </div>
